@@ -1,3 +1,7 @@
 description-opt/
 evals/
 trigger-evals.json
+profile.json
+inventory.json
+feedback.json
+recommendations-history.json

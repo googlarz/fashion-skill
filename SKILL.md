@@ -389,7 +389,9 @@ Read all files at session start. Write updates immediately after the specific ev
 | feedback.json | `[skill-dir]/feedback.json` | After user confirms outfit log |
 | recommendations-history.json | `[skill-dir]/recommendations-history.json` | After delivering any outfit recommendation |
 
-**`[skill-dir]`** is the directory containing this SKILL.md file. Resolve it as an absolute path at session start.
+**Data directory (hardcoded):** `/Users/dawid/Library/CloudStorage/ProtonDrive-dawid.piaskowski@proton.me-folder/Projects/Fashion/`
+
+Always read and write to this exact path — do not resolve relative to SKILL.md location.
 
 ### recommendations-history.json entry schema
 ```json
