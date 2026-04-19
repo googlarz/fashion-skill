@@ -1,8 +1,10 @@
-# Fashion — Personal AI Stylist for Men
+# Fashion — Personal AI Stylist
 
-A [Claude Code](https://claude.ai/code) skill that acts as a deeply personalized men's fashion advisor. It learns your body, builds a wardrobe inventory, recommends outfits by occasion, runs pre-purchase checks, and gets smarter every time you wear something.
+A [Claude Code](https://claude.ai/code) skill that acts as a deeply personalized fashion advisor — for any gender, any style direction. It learns your body, builds a wardrobe inventory, recommends outfits by occasion, runs pre-purchase checks, imports your purchases directly from Zalando and Amazon via Chrome, and gets smarter every time you wear something.
 
-Built for men who care about looking sharp without spending hours thinking about it.
+**Works in:** Claude Code CLI, Claude Code desktop app, and Claude Cowork.
+
+Built for people who care about looking sharp without spending hours thinking about it.
 
 ---
 
@@ -11,14 +13,15 @@ Built for men who care about looking sharp without spending hours thinking about
 | Capability | Description |
 |------------|-------------|
 | **Profile onboarding** | Guided 5-block interview (body, photos, lifestyle, style, budget) — conversational, not a form |
-| **Body analysis** | Derives silhouette, color system (Cool Winter / Warm Autumn / etc.), and precise fit rules from photos |
+| **Body analysis** | Derives silhouette, color system (Cool Winter / Warm Autumn / etc.), and precise fit rules from photos — works for any body shape and gender |
 | **Wardrobe inventory** | Photo-based item logging with brand/model identification before logging — no guessing |
-| **Outfit recommendations** | 2–3 complete looks per occasion (top + bottom + shoes + watch) with WHY each piece works for your body |
+| **Purchase import** | Connects to Zalando.de or Amazon.de via Chrome, pulls your order history, and walks you through each item to confirm before logging |
+| **Outfit recommendations** | 2–3 complete looks per occasion with WHY each piece works for your specific body |
 | **Pre-purchase check** | Photo in → honest Buy / Skip / Only if verdict with outfit combos and a Zalando link |
 | **Feedback loop** | Logs what you wore, what worked, and what got compliments — learns over time |
 | **Shopping links** | Every suggestion includes a Zalando.de or Amazon.de link. One click, right size |
 | **Seasonal planning** | Berlin-calibrated seasons (Mar–Feb), wardrobe rotation prompts, gap identification |
-| **Trend awareness** | 2025–2026 menswear directions filtered through your body type and Berlin context |
+| **Trend awareness** | 2025–2026 directions (menswear + womenswear) filtered through your body type and Berlin context |
 | **Honest opinions** | Direct, not harsh. Will tell you why something doesn't work and what to do instead |
 
 ---
@@ -171,6 +174,24 @@ Each item has:
 
 ---
 
+## Purchase Import via Chrome
+
+The skill can connect to your Zalando or Amazon account through Chrome and import your order history directly — no manual entry required.
+
+```
+You: import my Zalando purchases
+Claude: Opens Zalando order history in Chrome, reads your orders back 3 months (or however far you want), then walks through each item:
+
+📦 Found: Uniqlo Airism T-Shirt — Black — ordered 2026-03-12
+Is this still in your wardrobe? Yes / No / Skip
+```
+
+It only logs items you confirm. Returned or donated items are skipped. After import, it assesses what you now have and flags wardrobe gaps.
+
+**Requires:** Claude Code desktop app or Claude Cowork with Chrome access. You must be already logged into the store — the skill never handles your login credentials.
+
+---
+
 ## Berlin-Specific Tuning
 
 The skill is calibrated for Berlin lifestyle and climate:
@@ -180,26 +201,23 @@ The skill is calibrated for Berlin lifestyle and climate:
 - **Autumn** (Sep–Nov): 8–16°C — layering season, boots
 - **Winter** (Dec–Feb): -2–6°C — heavy coats, thermal base layers
 
-Trend guidance leans toward Berlin's aesthetic: technical minimalism (Arc'teryx, Stone Island, C.P. Company), all-black or near-black as default, sneakers acceptable in most professional settings, quality over trend-chasing.
+Trend guidance leans toward Berlin's aesthetic: technical minimalism (Arc'teryx, Stone Island, C.P. Company), all-black or near-black as default for all genders, sneakers acceptable in most professional settings, quality over trend-chasing.
 
 ---
 
 ## Trend Coverage (2025–2026)
 
-**Strong:**
+**All genders:**
 - Technical outerwear as statement piece
 - Dark monochromatic dressing
-- Relaxed tailoring — unstructured blazers, wide-leg trousers
 - Outdoor-urban hybrid (trail shoes with smart casual)
-- Merino knitwear as year-round staple
+- Quality basics over fast fashion
 
-**Fading:**
-- Skinny jeans
-- Logo-forward pieces
-- Ultra-formal suits for everyday
-- Slim-fit everything
+**Menswear:** Relaxed tailoring, merino knitwear, wide-leg trousers. Fading: skinny jeans, slim-fit everything, logo-forward pieces.
 
-The skill filters all trends through your specific body type and style — it will tell you which ones don't suit you and why.
+**Womenswear:** Quiet luxury (Toteme / The Row aesthetic), ballet flats and Mary Janes, oversized tailoring with fitted basics. Fading: micro-mini, very visible logos.
+
+The skill filters all trends through your specific body type, gender expression, and style — it will tell you which ones don't suit you and why.
 
 ---
 
@@ -222,6 +240,7 @@ All 7 evals pass with 43/43 assertions in the current version.
 
 | Version | Date | Notes |
 |---------|------|-------|
+| 1.1.0 | 2026-04-19 | Gender-neutral, Claude Cowork support, Chrome purchase import from Zalando/Amazon, womenswear trends added |
 | 1.0.0 | 2026-04-19 | Initial release — full onboarding, photo protocol, Berlin seasons, 2025–26 trends, Zalando links, feedback loop |
 
 ---
