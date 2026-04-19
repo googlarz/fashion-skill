@@ -212,6 +212,14 @@ Supabase is the recommended backend but any REST-accessible store works. Adapt t
 
 ---
 
+## City & Climate Awareness
+
+During onboarding the skill asks where you live and calibrates to your local climate and fashion scene. It knows seasonal temperature ranges, what's locally acceptable in professional settings, and which trends are relevant to your city's aesthetic.
+
+Example cities it handles well: Berlin, London, Paris, Warsaw, Amsterdam, NYC, Tokyo — or just describe your climate and it adapts.
+
+---
+
 ## Trend Coverage (2025–2026)
 
 **All genders:**
