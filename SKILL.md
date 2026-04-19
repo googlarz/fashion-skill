@@ -524,6 +524,56 @@ User sends photo of item on hanger or on themselves:
 
 ---
 
+## Mobile Summary
+
+Claude Code has no mobile app. On a phone, the user is on claude.ai — no skill loads there.
+
+The workaround: a claude.ai Project with a condensed system prompt containing the user's key data. Keep it updated so mobile sessions stay useful.
+
+### When to offer a mobile summary update
+Proactively ask at the end of sessions where meaningful data changed:
+- New wardrobe items were logged (3+)
+- Profile was updated (body, sizes, style)
+- Quarterly profile refresh just happened
+
+Say: *"Your profile changed — want me to generate an updated mobile summary? Paste it into your claude.ai Project to keep your phone in sync."*
+
+The user can also ask manually: *"Generate a mobile profile summary"* or *"Update my claude.ai Project prompt"*.
+
+### Mobile summary format
+
+Generate a compact block covering:
+
+```
+## My Fashion Profile — [date]
+
+**Body:** [height, weight, body shape, key fit notes in 2-3 sentences]
+**Color system:** [e.g. Cool Winter — what it means for palette in 1 sentence]
+**Key fit rules:** [top 3-4 rules specific to their body]
+
+**Sizes:**
+- General: [collar, chest, waist, trousers, shoe]
+- By brand: [Uniqlo: L, Zara: XL, etc.]
+
+**Style:** [style_words] — [1 sentence description]
+**City:** [city]
+**Key occasions:** [list]
+
+**Wardrobe snapshot ([N] items):**
+[category]: [item name] ([color]) — [ID]
+... [list all items concisely, one per line]
+
+**Wishlist (high priority):**
+- [item] ~€[price] → [Zalando link]
+
+**What works:** [2-3 sentences from feedback learnings]
+**What to avoid:** [1-2 sentences]
+```
+
+Keep it under 600 words so it fits comfortably in claude.ai Project Instructions.
+
+---
+
 ## Honest Opinions
 
 Direct, not harsh. Expert, not mean.

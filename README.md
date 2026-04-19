@@ -18,10 +18,16 @@ Built for people who care about looking sharp without spending hours thinking ab
 | **Purchase import** | Connects to Zalando.de or Amazon.de via Chrome, pulls your order history, and walks you through each item to confirm before logging |
 | **Outfit recommendations** | 2–3 complete looks per occasion with WHY each piece works for your specific body |
 | **Pre-purchase check** | Photo in → honest Buy / Skip / Only if verdict with outfit combos and a Zalando link |
+| **In-store mode** | Quick verdict mode when you're physically shopping — photo → identify → buy/skip in one response |
 | **Feedback loop** | Logs what you wore, what worked, and what got compliments — learns over time |
+| **Wardrobe audit** | Monthly check: flags unworn items, low-rotation pieces, sell/donate candidates |
+| **Inspiration & wishlist** | Share photos or Pinterest boards — extracts style patterns, builds a prioritised wishlist |
 | **Shopping links** | Every suggestion includes a Zalando.de or Amazon.de link. One click, right size |
-| **Seasonal planning** | Berlin-calibrated seasons (Mar–Feb), wardrobe rotation prompts, gap identification |
-| **Trend awareness** | 2025–2026 directions (menswear + womenswear) filtered through your body type and Berlin context |
+| **Brand sizing** | Tracks your size per brand — no more guessing between brands |
+| **Weather-aware** | Checks current weather automatically at session start — no need to tell it |
+| **Seasonal planning** | City-calibrated seasons, wardrobe rotation prompts, gap identification |
+| **Trend awareness** | 2025–2026 directions (menswear + womenswear) filtered through your body type and city |
+| **Profile refresh** | Quarterly stylist-style check-in on body changes, life context, style drift |
 | **Honest opinions** | Direct, not harsh. Will tell you why something doesn't work and what to do instead |
 
 ---
@@ -45,45 +51,18 @@ mkdir -p ~/.claude/commands
 cp fashion-skill/SKILL.md ~/.claude/commands/fashion.md
 ```
 
-### Step 3 — Set up your data backend (Supabase)
+### Step 3 — Set up your data directory
 
-Your data (body profile, wardrobe, feedback) lives in a free Supabase database so it's available across all your devices.
-
-**3a. Create a free Supabase project** at [supabase.com](https://supabase.com)
-- Choose the region closest to you
-- Free tier is more than enough — you'll never hit the limits
-
-**3b. Run this SQL** in the Supabase SQL Editor (Dashboard → SQL Editor → New query):
-
-```sql
-create table if not exists fashion_store (
-  key text primary key,
-  data jsonb not null,
-  updated_at timestamptz default now()
-);
-
-alter table fashion_store disable row level security;
-
-insert into fashion_store (key, data) values
-  ('profile', '{}'::jsonb),
-  ('inventory', '{}'::jsonb),
-  ('feedback', '{"entries":[]}'::jsonb),
-  ('recommendations', '{"recommendations":[]}'::jsonb)
-on conflict (key) do nothing;
-```
-
-**3c. Get your credentials** from Supabase Dashboard → Settings → API:
-- `Project URL` (looks like `https://xxxx.supabase.co`)
-- `anon public` key
-
-**3d. Add to your shell profile** (`~/.zshrc` or `~/.bashrc`):
+Your data (body profile, wardrobe, feedback) lives in local JSON files. Point the skill to wherever you want to store them — a synced folder (Dropbox, iCloud, Google Drive, ProtonDrive) works well if you want access across machines.
 
 ```bash
-export FASHION_SUPABASE_URL="https://your-project.supabase.co"
-export FASHION_SUPABASE_KEY="your-anon-key"
+# Add to your shell profile (~/.zshrc or ~/.bashrc):
+export FASHION_DATA_DIR="/path/to/your/folder"
 ```
 
 Then reload: `source ~/.zshrc`
+
+If you skip this, the skill stores data next to the SKILL.md file.
 
 ### Step 4 — Verify
 
@@ -97,7 +76,42 @@ or just ask naturally:
 
 > "What should I wear to a client meeting tomorrow?"
 
-Claude will load the skill, connect to your Supabase, and start onboarding if it's your first session.
+Claude will load the skill and start onboarding if it's your first session.
+
+---
+
+## Mobile — Limitations and Workaround
+
+**Claude Code has no mobile app.** On your phone, you're using claude.ai — which doesn't load skills.
+
+### What this means in practice
+- Full skill (outfit recommendations, purchase import, wardrobe logging) → Claude Code on desktop only
+- On mobile → you get a plain Claude session with no knowledge of your profile or wardrobe
+
+### The workaround: claude.ai Project
+
+Create a [Project on claude.ai](https://claude.ai) with a condensed system prompt that includes your key data. This gives you a functional stylist on mobile — good for quick in-store decisions and pre-purchase checks.
+
+**What works on mobile via Project:**
+- In-store mode: photo → identify → buy/skip verdict
+- Pre-purchase check
+- Outfit ideas (if you paste or upload your inventory snapshot)
+
+**What doesn't work on mobile:**
+- Chrome purchase import
+- Automatic wardrobe logging back to your files
+- Auto weather fetch
+
+### Keeping the mobile Project updated
+
+The skill handles this for you. At the end of sessions where your profile or wardrobe changes significantly, Claude will ask:
+
+> *"Want me to generate an updated mobile summary? You can paste it into your claude.ai Project to keep your phone in sync."*
+
+You can also trigger it manually:
+> "Generate a mobile profile summary for my claude.ai Project"
+
+Claude will produce a compact block — your body profile, color system, sizing, and wardrobe snapshot — ready to paste into Project Instructions.
 
 ---
 
@@ -105,13 +119,13 @@ Claude will load the skill, connect to your Supabase, and start onboarding if it
 
 On first run, the skill opens with a warm stylist intro and guides you through five blocks:
 
-1. **The Basics** — height, weight, measurements, fit challenges, sweating
+1. **The Basics** — height, weight, measurements, brand sizes, fit challenges, sweating
 2. **Show Me You** — body photos for proportions, silhouette, and color system analysis
 3. **Your Life** — city, work, clients, occasions, lifestyle
 4. **Your Style** — 3-word style, trusted brands, style icons, what you refuse to wear
-5. **Budget** — basics / mid-range / investment tiers + Supabase setup if not done yet
+5. **Budget** — basics / mid-range / investment tiers
 
-Each block is conversational. Claude reacts to answers before asking the next question. It does not dump all questions at once. After onboarding your profile is saved to Supabase immediately.
+Each block is conversational. Claude reacts to answers before asking the next question. It does not dump all questions at once. Profile is saved immediately after each block.
 
 ---
 
@@ -125,14 +139,17 @@ When you share a photo of any item, Claude always:
 4. Assesses fit if you're wearing it
 
 ### Outfit recommendations
-Claude asks for occasion + vibe + weather + time of day first, then builds 2–3 complete outfits from your inventory. If your inventory is sparse, it leads with the specific gaps and Zalando links, then shows what's possible with what you have.
+Claude checks weather automatically, then asks for occasion + vibe + time of day. Builds 2–3 complete outfits from your inventory with specific styling notes. If inventory is sparse, leads with gap identification and Zalando links.
+
+### In-store mode
+Say "I'm in a store" or "quick — should I get this?" and Claude switches to fast mode: verdict first, one sentence of reasoning, one alternative link if skipping. No five questions before answering.
 
 ### Shopping links format
 ```
 🛍️ Item name
 Brand: X
 Why it works for you: [body/style specific reason]
-Size to look for: [your exact size]
+Size to look for: [your confirmed size for this brand, or best estimate]
 Price range: ~€X
 → Zalando: https://www.zalando.de/search/?q=item+name
 → Amazon: https://www.amazon.de/s?k=item+name
@@ -149,20 +166,23 @@ Is this still in your wardrobe? Yes / No / Skip
 Only confirmed items are logged. Requires Claude Code desktop app with Chrome access.
 
 ### Feedback loop
-Tell Claude what you wore, how it went, what got compliments. It logs everything to Supabase and updates item assessments. Over time it builds a picture of what actually works vs. what looks good in theory.
+Tell Claude what you wore, how it went, what got compliments. It logs everything and updates item assessments. Over time it builds a picture of what actually works vs. what looks good in theory.
+
+### Wardrobe audit
+Once a month, Claude proactively surfaces items not worn in 90+ days, flags low-rotation pieces, and suggests what to store or sell before the next season.
 
 ---
 
 ## Data Schema
 
-All data lives in a single Supabase table (`fashion_store`) with four rows:
+All data lives in four local JSON files in your `FASHION_DATA_DIR`:
 
-| key | data |
-|-----|------|
-| `profile` | Body measurements, color system, fit rules, lifestyle, style direction |
-| `inventory` | All wardrobe items with metadata, seasonal tags, fit assessments |
-| `feedback` | Outfit logs with occasion, sentiment, compliments, learnings |
-| `recommendations` | Past outfit recommendations with date and occasion |
+| File | Contents |
+|------|----------|
+| `profile.json` | Body measurements, color system, fit rules, brand sizes, lifestyle, style direction, wishlist |
+| `inventory.json` | All wardrobe items with metadata, seasonal tags, fit assessments |
+| `feedback.json` | Outfit logs with occasion, sentiment, compliments, learnings |
+| `recommendations-history.json` | Past outfit recommendations with date and occasion |
 
 ### inventory item schema
 ```json
@@ -201,20 +221,9 @@ All data lives in a single Supabase table (`fashion_store`) with four rows:
 
 ---
 
-## Alternative Data Backends
-
-Supabase is the recommended backend but any REST-accessible store works. Adapt the read/write calls in SKILL.md to match:
-
-- **PocketBase** — self-hosted alternative, same REST pattern
-- **Firebase Firestore** — works via REST API
-- **Notion API** — possible but slower
-- **Local files** — works on Mac/PC only (no cross-device sync); remove Supabase section from SKILL.md and store JSON files locally
-
----
-
 ## City & Climate Awareness
 
-During onboarding the skill asks where you live and calibrates to your local climate and fashion scene. It knows seasonal temperature ranges, what's locally acceptable in professional settings, and which trends are relevant to your city's aesthetic.
+During onboarding the skill asks where you live and calibrates to your local climate and fashion scene. It checks live weather at session start. It knows seasonal temperature ranges, what's locally acceptable in professional settings, and which trends are relevant to your city's aesthetic.
 
 Example cities it handles well: Berlin, London, Paris, Warsaw, Amsterdam, NYC, Tokyo — or just describe your climate and it adapts.
 
@@ -232,7 +241,7 @@ Example cities it handles well: Berlin, London, Paris, Warsaw, Amsterdam, NYC, T
 
 **Womenswear:** Quiet luxury (Toteme / The Row aesthetic), ballet flats and Mary Janes, oversized tailoring. Fading: micro-mini, very visible logos.
 
-The skill filters all trends through your specific body type, gender expression, and city.
+The skill filters all trends through your specific body type, gender expression, and city. It also acknowledges its training cutoff and asks you once per season if you've spotted anything new worth integrating.
 
 ---
 
@@ -240,8 +249,11 @@ The skill filters all trends through your specific body type, gender expression,
 
 | Version | Date | Notes |
 |---------|------|-------|
-| 1.2.0 | 2026-04-19 | Supabase backend — data syncs across all devices |
-| 1.1.0 | 2026-04-19 | Gender-neutral, Claude Cowork support, Chrome purchase import |
+| 1.4.1 | 2026-04-19 | Profile refresh as stylist check-in, personal data audit |
+| 1.4.0 | 2026-04-19 | Local JSON storage, weather, brand sizing, wardrobe audit, trend freshness |
+| 1.3.0 | 2026-04-19 | City-aware seasons, expanded trends, inspiration/wishlist, in-store mode |
+| 1.2.0 | 2026-04-19 | Gender-neutral, Claude Cowork support, Chrome purchase import |
+| 1.1.0 | 2026-04-19 | Slash command support, description optimization |
 | 1.0.0 | 2026-04-19 | Initial release |
 
 ---
@@ -255,9 +267,8 @@ MIT — use it, fork it, adapt it for your own body and city.
 ## Contributing
 
 Pull requests welcome — especially for:
-- New city climate profiles (currently Berlin-tuned)
+- New city climate profiles
 - Additional shopping sites beyond Zalando/Amazon
-- New backend integrations
 - Improved body analysis prompts
 
 If you fork this for your own use: the onboarding will build your profile from scratch on first run. No need to copy anyone else's data.
