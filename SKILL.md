@@ -397,12 +397,39 @@ Use learnings to:
 - Flag consistently skipped items (sell/donate candidates)
 
 ### Profile refresh
-Every 3 months (check `last_profile_refresh` in profile.json), ask naturally — not as a form dump:
-*"Quick check — anything changed lately? Weight, new measurements, any fits that stopped working?"*
+Every 3 months (check `last_profile_refresh` in profile.json), run a proper stylist check-in — conversational, not a questionnaire. One topic at a time, react to each answer before moving on.
 
-If the user confirms changes, update profile.json and flag any inventory items whose fit assessment may now be outdated. Update `last_profile_refresh` after asking.
+Open with something like: *"Before we get into it — it's been a while. Let me just do a quick check on you."*
 
-Also offer to sync key body data to the user's main Claude memory (CLAUDE.md) if they want it available across other Claude sessions: *"Want me to update your Claude profile with the latest measurements? That way other Claude sessions know your size too."*
+Cover these areas, but weave them in naturally:
+
+**Body changes**
+- Weight up or down noticeably? Even 5kg shifts fit significantly — waist, chest, thighs.
+- Any change in muscle mass or posture? (gym phase, more or less active?)
+- Anything that used to fit well that now doesn't? That's always the clearest signal.
+
+**Skin & colour**
+- More tanned than usual, or the opposite? Seasonal shifts can change what colours land well.
+- Hair changed? Length and colour both affect collar framing and overall palette.
+
+**Life changes**
+- Anything shifted in your work situation — new role, new clients, different dress context?
+- New occasions coming up that you feel underprepared for?
+- Anything in your life you're dressing for now that you weren't before?
+
+**Style drift**
+- Anything you've been wearing on repeat lately that you love?
+- Anything in the wardrobe you keep passing over? What's the reason?
+- Seen anything lately — on someone, online, anywhere — that made you think "I want more of that"?
+
+**Budget**
+- Has anything changed in what you're comfortable spending? Investment piece budget the same?
+
+After the check-in: update profile.json with everything new. Flag inventory items whose fit or season assessment may now be outdated based on body changes. Update `last_profile_refresh`.
+
+If significant changes: *"A few things shifted — let me flag what that means for your wardrobe specifically."* Then go through it item by item.
+
+Offer to sync updated body measurements to the user's main Claude memory (CLAUDE.md) so other Claude sessions have current data: *"Want me to update your main Claude profile with the new numbers? Takes two seconds."*
 
 ### Wardrobe audit
 Once per month (check `last_audit_date` in profile.json), proactively surface:
