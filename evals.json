@@ -1,0 +1,96 @@
+{
+  "skill_name": "fashion",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Hi, I want to set up my fashion profile. I'm starting fresh.",
+      "expected_output": "Skill opens with a warm, friendly welcome message. Immediately starts onboarding Block 1 — asks height/weight, measurements, fit challenges, sweating. Tone is conversational like a good stylist, not a form. Does NOT dump all blocks at once.",
+      "assertions": [
+        "Response includes a welcoming, warm opener (not just 'sure, let's start')",
+        "Asks about height and weight in Block 1",
+        "Asks about measurements (collar, trouser, shoe size)",
+        "Asks about fit challenges",
+        "Asks about sweating",
+        "Does NOT ask about budget or style in the first message — that comes later",
+        "Tone is conversational and friendly, not clinical"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Here's a photo of my t-shirt [user shares photo of a black Uniqlo Airism t-shirt]",
+      "expected_output": "Skill analyzes the photo, identifies it as Uniqlo Airism, states the identification with colorway, asks user to confirm. Does NOT log it immediately. After confirmation, assesses how it fits the user's profile (if profile exists) and logs with full metadata.",
+      "assertions": [
+        "Skill attempts to identify brand (Uniqlo) and model (Airism)",
+        "States identification as a question for confirmation: 'This looks like X — does that sound right?'",
+        "Does NOT log the item before confirmation",
+        "After confirmation, notes the item is logged",
+        "Includes fit assessment if profile exists"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "What should I wear for a client meeting tomorrow? It's with a traditional consulting client, quite formal.",
+      "expected_output": "Skill checks inventory, builds 2-3 outfit options appropriate for formal consulting meeting. Each outfit includes top + bottom + shoes + watch suggestion. Explains WHY each piece works. Notes gaps with Zalando shopping links. Considers the user's body type in the recommendations.",
+      "assertions": [
+        "Reads inventory before responding",
+        "Generates at minimum 2 complete outfit suggestions",
+        "Each outfit includes shoes and watch recommendation",
+        "Explains WHY each piece works for formal client meeting",
+        "Includes at least one Zalando link for a gap item",
+        "Considers user's body type (if profile exists) in recommendations"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "I'm thinking about buying these shoes: [photo of On Roger Advantage in black]. Worth it?",
+      "expected_output": "Skill identifies the shoe as On Roger Advantage (or asks to confirm), runs pre-purchase check: checks style profile fit, checks inventory for pairing options, gives honest verdict, shows outfit combos with existing inventory, provides Zalando link for purchase.",
+      "assertions": [
+        "Attempts to identify the specific model (On Roger Advantage)",
+        "Asks for confirmation on identification",
+        "Checks shoe against existing wardrobe/profile",
+        "Gives clear Buy/Skip/Only-if verdict",
+        "Shows at least 2 outfit combos using existing inventory",
+        "Includes Zalando or On.com shopping link",
+        "Notes size consideration (EU 49, wide foot)"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "I wore the all-black outfit yesterday to a work meeting. Felt really confident. A colleague complimented my watch.",
+      "expected_output": "Skill logs the feedback with all details, updates feedback.json, notes what worked (all-black outfit, watch as standout), incorporates learning into profile. Suggests potential next step (try similar combo for upcoming occasion, or suggests a slight variation).",
+      "assertions": [
+        "Acknowledges and records the feedback",
+        "Notes the specific compliment (watch)",
+        "Updates feedback log with outfit, occasion, sentiment, and compliment",
+        "Extracts a learning: all-black works, watch is a strong accessory",
+        "Suggests a logical next step"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "What should I add to my wardrobe for summer? I'm in Berlin.",
+      "expected_output": "Skill references current season (Spring/approaching Summer in Berlin), identifies gaps in inventory for warm weather, suggests specific items with Zalando links. Considers user's body type, color palette, and style direction. Mentions relevant summer trends for Berlin.",
+      "assertions": [
+        "References Berlin summer climate (20-32°C)",
+        "Identifies at least 3 seasonal gaps based on inventory",
+        "Suggests specific items with approximate price range",
+        "Includes Zalando links for at least 2 suggestions",
+        "Suggestions match user's color palette and style",
+        "Mentions at least one relevant trend"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "What's trending in menswear right now that would work for me?",
+      "expected_output": "Skill references current trends (2025-2026), filters them through the user's specific body type, style direction, and city (Berlin). Only recommends trends that actually work for them. Dismisses trends that don't suit them with explanation. Concrete and specific, not generic.",
+      "assertions": [
+        "References specific current trends (not generic advice)",
+        "Filters trends through user's body type and style",
+        "Rejects at least one trend as not suitable with explanation",
+        "Recommends at least 2 trends with specific item suggestions",
+        "Berlin context is acknowledged",
+        "Includes shopping link for at least one trend piece"
+      ]
+    }
+  ]
+}
