@@ -1,8 +1,8 @@
 # Fashion — Personal AI Stylist
 
-A [Claude Code](https://claude.ai/code) skill that acts as a deeply personalized fashion advisor — for any gender, any style direction. It learns your body, builds a wardrobe inventory, recommends outfits by occasion, runs pre-purchase checks, imports your purchases directly from Zalando and Amazon via Chrome, and gets smarter every time you wear something.
+A skill for **[Claude Code](https://claude.ai/code)** and **[Claude Cowork](https://claude.ai/cowork)** that acts as a deeply personalized fashion advisor — for any gender, any style direction. It learns your body, builds a wardrobe inventory, recommends outfits by occasion, runs pre-purchase checks, imports your purchases directly from Zalando and Amazon via Chrome, and gets smarter every time you wear something.
 
-**Works in:** Claude Code CLI, Claude Code desktop app, and Claude Cowork.
+> **Works in:** Claude Code CLI · Claude Code desktop app · Claude Cowork
 
 Built for people who care about looking sharp without spending hours thinking about it.
 
@@ -34,9 +34,13 @@ Built for people who care about looking sharp without spending hours thinking ab
 
 ## Installation
 
-### Step 1 — Install Claude Code
+### Step 1 — Install Claude Code or use Claude Cowork
 
-Download [Claude Code](https://claude.ai/code) (CLI or desktop app). This skill requires Claude Code — it does not work on claude.ai web or mobile alone.
+This skill works in two environments:
+- **[Claude Code](https://claude.ai/code)** — CLI or desktop app, install locally
+- **[Claude Cowork](https://claude.ai/cowork)** — browser-based, no install needed; Chrome-based features (purchase import) require the Chrome extension
+
+It does not work on claude.ai web or mobile alone — see the [Mobile](#mobile--limitations-and-workaround) section below.
 
 ### Step 2 — Clone and install the skill
 
