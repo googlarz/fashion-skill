@@ -26,60 +26,78 @@ Built for people who care about looking sharp without spending hours thinking ab
 
 ---
 
-## How It Works
-
-The skill runs entirely locally. All data lives in JSON files in the same directory as the skill. Nothing leaves your machine except shopping search queries (Zalando/Amazon links).
-
-```
-fashion/
-├── SKILL.md                      # The skill itself — Claude reads this
-├── profile.json                  # Your body, color system, fit rules, lifestyle
-├── inventory.json                # Every item you own with metadata
-├── feedback.json                 # Outfit logs + learnings from wear
-├── recommendations-history.json  # Past recommendations with occasion + date
-└── evals.json                    # Test cases for quality validation
-```
-
-Claude reads all files at session start and writes updates immediately after each confirmation — no batching, no lost data.
-
----
-
 ## Installation
 
-### Prerequisites
-- [Claude Code](https://claude.ai/code) (CLI or desktop app)
+### Step 1 — Install Claude Code
 
-### Install the skill
+Download [Claude Code](https://claude.ai/code) (CLI or desktop app). This skill requires Claude Code — it does not work on claude.ai web or mobile alone.
+
+### Step 2 — Clone and install the skill
 
 ```bash
-# Clone the repo
-git clone https://github.com/YOUR_USERNAME/fashion-skill.git
+git clone https://github.com/googlarz/fashion-skill.git
 
-# Copy the skill to Claude's local skills directory
 mkdir -p ~/.claude/skills/fashion
 cp fashion-skill/SKILL.md ~/.claude/skills/fashion/SKILL.md
+
+# Also register as slash command (optional but recommended)
+mkdir -p ~/.claude/commands
+cp fashion-skill/SKILL.md ~/.claude/commands/fashion.md
 ```
 
-The data files (`profile.json`, `inventory.json`, etc.) should live alongside `SKILL.md` so Claude can find them relative to the skill directory. Copy them too, or let Claude create them fresh during onboarding.
+### Step 3 — Set up your data backend (Supabase)
+
+Your data (body profile, wardrobe, feedback) lives in a free Supabase database so it's available across all your devices.
+
+**3a. Create a free Supabase project** at [supabase.com](https://supabase.com)
+- Choose the region closest to you
+- Free tier is more than enough — you'll never hit the limits
+
+**3b. Run this SQL** in the Supabase SQL Editor (Dashboard → SQL Editor → New query):
+
+```sql
+create table if not exists fashion_store (
+  key text primary key,
+  data jsonb not null,
+  updated_at timestamptz default now()
+);
+
+alter table fashion_store disable row level security;
+
+insert into fashion_store (key, data) values
+  ('profile', '{}'::jsonb),
+  ('inventory', '{}'::jsonb),
+  ('feedback', '{"entries":[]}'::jsonb),
+  ('recommendations', '{"recommendations":[]}'::jsonb)
+on conflict (key) do nothing;
+```
+
+**3c. Get your credentials** from Supabase Dashboard → Settings → API:
+- `Project URL` (looks like `https://xxxx.supabase.co`)
+- `anon public` key
+
+**3d. Add to your shell profile** (`~/.zshrc` or `~/.bashrc`):
 
 ```bash
-cp fashion-skill/profile.json ~/.claude/skills/fashion/
-cp fashion-skill/inventory.json ~/.claude/skills/fashion/
-cp fashion-skill/feedback.json ~/.claude/skills/fashion/
-cp fashion-skill/recommendations-history.json ~/.claude/skills/fashion/
+export FASHION_SUPABASE_URL="https://your-project.supabase.co"
+export FASHION_SUPABASE_KEY="your-anon-key"
 ```
 
-### Verify installation
+Then reload: `source ~/.zshrc`
 
-Start Claude Code and check that `fashion` appears in the available skills list. Then trigger it:
+### Step 4 — Verify
+
+Start Claude Code and type:
 
 ```
 /fashion
 ```
 
-or just describe what you need and Claude will pick it up automatically:
+or just ask naturally:
 
 > "What should I wear to a client meeting tomorrow?"
+
+Claude will load the skill, connect to your Supabase, and start onboarding if it's your first session.
 
 ---
 
@@ -91,11 +109,9 @@ On first run, the skill opens with a warm stylist intro and guides you through f
 2. **Show Me You** — body photos for proportions, silhouette, and color system analysis
 3. **Your Life** — city, work, clients, occasions, lifestyle
 4. **Your Style** — 3-word style, trusted brands, style icons, what you refuse to wear
-5. **Budget** — basics / mid-range / investment tiers
+5. **Budget** — basics / mid-range / investment tiers + Supabase setup if not done yet
 
-Each block is conversational. Claude reacts to answers before asking the next question. It does not dump all questions at once.
-
-After onboarding: your profile is written to `profile.json` and you can immediately start adding wardrobe items or getting recommendations.
+Each block is conversational. Claude reacts to answers before asking the next question. It does not dump all questions at once. After onboarding your profile is saved to Supabase immediately.
 
 ---
 
@@ -109,7 +125,7 @@ When you share a photo of any item, Claude always:
 4. Assesses fit if you're wearing it
 
 ### Outfit recommendations
-Claude asks for occasion + vibe + weather + time of day first, then builds 2–3 complete outfits from your inventory. If your inventory is sparse, it leads with the specific gaps and Zalando links for them, then shows what's possible with what you have.
+Claude asks for occasion + vibe + weather + time of day first, then builds 2–3 complete outfits from your inventory. If your inventory is sparse, it leads with the specific gaps and Zalando links, then shows what's possible with what you have.
 
 ### Shopping links format
 ```
@@ -122,18 +138,33 @@ Price range: ~€X
 → Amazon: https://www.amazon.de/s?k=item+name
 ```
 
+### Purchase import via Chrome
+```
+You: import my Zalando purchases
+Claude: Opens Zalando order history in Chrome, reads your orders, then walks through each item:
+
+📦 Found: Uniqlo Airism T-Shirt — Black — ordered 2026-03-12
+Is this still in your wardrobe? Yes / No / Skip
+```
+Only confirmed items are logged. Requires Claude Code desktop app with Chrome access.
+
 ### Feedback loop
-Tell Claude what you wore, how it went, what got compliments. It logs everything to `feedback.json` and updates item assessments in `inventory.json`. Over time it builds a picture of what actually works vs. what looks good in theory.
+Tell Claude what you wore, how it went, what got compliments. It logs everything to Supabase and updates item assessments. Over time it builds a picture of what actually works vs. what looks good in theory.
 
 ---
 
-## Data Schemas
+## Data Schema
 
-### profile.json
-Stores body measurements, color system, fit rules, lifestyle, style direction, and learned feedback. The `body` section is the most detailed — it captures proportions, posture, face shape, skin tone, and precise fit rules derived from those measurements.
+All data lives in a single Supabase table (`fashion_store`) with four rows:
 
-### inventory.json
-Each item has:
+| key | data |
+|-----|------|
+| `profile` | Body measurements, color system, fit rules, lifestyle, style direction |
+| `inventory` | All wardrobe items with metadata, seasonal tags, fit assessments |
+| `feedback` | Outfit logs with occasion, sentiment, compliments, learnings |
+| `recommendations` | Past outfit recommendations with date and occasion |
+
+### inventory item schema
 ```json
 {
   "id": "top_001",
@@ -153,86 +184,47 @@ Each item has:
 }
 ```
 
-### feedback.json
+### feedback entry schema
 ```json
 {
-  "entries": [
-    {
-      "id": "fb_001",
-      "date": "2026-04-19",
-      "items_worn": ["top_001", "acc_001"],
-      "occasion": "work meeting",
-      "sentiment": "confident",
-      "compliments": [{"on": "watch", "from": "colleague"}],
-      "didnt_work": "",
-      "surprises": "",
-      "learnings": "All-black monochrome works well; watch reads as a statement piece"
-    }
-  ]
+  "id": "fb_001",
+  "date": "2026-04-19",
+  "items_worn": ["top_001", "acc_001"],
+  "occasion": "work meeting",
+  "sentiment": "confident",
+  "compliments": [{"on": "watch", "from": "colleague"}],
+  "didnt_work": "",
+  "surprises": "",
+  "learnings": "All-black monochrome works well; watch reads as a statement piece"
 }
 ```
 
 ---
 
-## Purchase Import via Chrome
+## Alternative Data Backends
 
-The skill can connect to your Zalando or Amazon account through Chrome and import your order history directly — no manual entry required.
+Supabase is the recommended backend but any REST-accessible store works. Adapt the read/write calls in SKILL.md to match:
 
-```
-You: import my Zalando purchases
-Claude: Opens Zalando order history in Chrome, reads your orders back 3 months (or however far you want), then walks through each item:
-
-📦 Found: Uniqlo Airism T-Shirt — Black — ordered 2026-03-12
-Is this still in your wardrobe? Yes / No / Skip
-```
-
-It only logs items you confirm. Returned or donated items are skipped. After import, it assesses what you now have and flags wardrobe gaps.
-
-**Requires:** Claude Code desktop app or Claude Cowork with Chrome access. You must be already logged into the store — the skill never handles your login credentials.
-
----
-
-## Berlin-Specific Tuning
-
-The skill is calibrated for Berlin lifestyle and climate:
-
-- **Spring** (Mar–May): 8–18°C — transitional layering
-- **Summer** (Jun–Aug): 20–32°C — breathable fabrics, lighter shoes
-- **Autumn** (Sep–Nov): 8–16°C — layering season, boots
-- **Winter** (Dec–Feb): -2–6°C — heavy coats, thermal base layers
-
-Trend guidance leans toward Berlin's aesthetic: technical minimalism (Arc'teryx, Stone Island, C.P. Company), all-black or near-black as default for all genders, sneakers acceptable in most professional settings, quality over trend-chasing.
+- **PocketBase** — self-hosted alternative, same REST pattern
+- **Firebase Firestore** — works via REST API
+- **Notion API** — possible but slower
+- **Local files** — works on Mac/PC only (no cross-device sync); remove Supabase section from SKILL.md and store JSON files locally
 
 ---
 
 ## Trend Coverage (2025–2026)
 
 **All genders:**
-- Technical outerwear as statement piece
+- Technical outerwear as statement piece (Arc'teryx, C.P. Company, Veilance)
 - Dark monochromatic dressing
 - Outdoor-urban hybrid (trail shoes with smart casual)
 - Quality basics over fast fashion
 
 **Menswear:** Relaxed tailoring, merino knitwear, wide-leg trousers. Fading: skinny jeans, slim-fit everything, logo-forward pieces.
 
-**Womenswear:** Quiet luxury (Toteme / The Row aesthetic), ballet flats and Mary Janes, oversized tailoring with fitted basics. Fading: micro-mini, very visible logos.
+**Womenswear:** Quiet luxury (Toteme / The Row aesthetic), ballet flats and Mary Janes, oversized tailoring. Fading: micro-mini, very visible logos.
 
-The skill filters all trends through your specific body type, gender expression, and style — it will tell you which ones don't suit you and why.
-
----
-
-## Running Evals
-
-The `evals.json` file contains 7 test cases covering the main skill behaviors. To run them:
-
-```bash
-# From the skill-creator directory (if you have it)
-python3 -m scripts.run_eval --eval-set /path/to/Fashion/evals.json \
-  --skill-path ~/.claude/skills/fashion \
-  --model claude-sonnet-4-6
-```
-
-All 7 evals pass with 43/43 assertions in the current version.
+The skill filters all trends through your specific body type, gender expression, and city.
 
 ---
 
@@ -240,8 +232,9 @@ All 7 evals pass with 43/43 assertions in the current version.
 
 | Version | Date | Notes |
 |---------|------|-------|
-| 1.1.0 | 2026-04-19 | Gender-neutral, Claude Cowork support, Chrome purchase import from Zalando/Amazon, womenswear trends added |
-| 1.0.0 | 2026-04-19 | Initial release — full onboarding, photo protocol, Berlin seasons, 2025–26 trends, Zalando links, feedback loop |
+| 1.2.0 | 2026-04-19 | Supabase backend — data syncs across all devices |
+| 1.1.0 | 2026-04-19 | Gender-neutral, Claude Cowork support, Chrome purchase import |
+| 1.0.0 | 2026-04-19 | Initial release |
 
 ---
 
@@ -253,10 +246,10 @@ MIT — use it, fork it, adapt it for your own body and city.
 
 ## Contributing
 
-This is a personal skill — the data files (`profile.json`, `inventory.json`) contain one person's specific measurements and wardrobe. If you fork it:
+Pull requests welcome — especially for:
+- New city climate profiles (currently Berlin-tuned)
+- Additional shopping sites beyond Zalando/Amazon
+- New backend integrations
+- Improved body analysis prompts
 
-1. Delete or clear `profile.json` and `inventory.json` before your first run
-2. Let the onboarding build your profile from scratch
-3. The skill works for any man's body — the AI adapts all recommendations to your specific measurements and color system
-
-Pull requests for skill improvements (better instructions, new behavior patterns, bug fixes) are welcome.
+If you fork this for your own use: the onboarding will build your profile from scratch on first run. No need to copy anyone else's data.

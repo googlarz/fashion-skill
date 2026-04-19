@@ -389,29 +389,50 @@ Read all files at session start. Write updates immediately after the specific ev
 | feedback.json | `[skill-dir]/feedback.json` | After user confirms outfit log |
 | recommendations-history.json | `[skill-dir]/recommendations-history.json` | After delivering any outfit recommendation |
 
-**Data backend: Supabase (works from any device)**
+**Data backend: cloud database (works from any device)**
 
+On first run, check for `FASHION_SUPABASE_URL` and `FASHION_SUPABASE_KEY` environment variables. If missing, prompt the user:
+
+*"To use this skill across all your devices, I need a Supabase database. It takes 2 minutes to set up — free forever for personal use. Go to supabase.com, create a project, then run this SQL in the SQL Editor:*
+
+```sql
+create table if not exists fashion_store (
+  key text primary key,
+  data jsonb not null,
+  updated_at timestamptz default now()
+);
+alter table fashion_store disable row level security;
+insert into fashion_store (key, data) values
+('profile', '{}'::jsonb), ('inventory', '{}'::jsonb),
+('feedback', '{"entries":[]}'::jsonb),
+('recommendations', '{"recommendations":[]}'::jsonb)
+on conflict (key) do nothing;
 ```
-SUPABASE_URL = https://ocbjtobfmbnbcvkrfzuo.supabase.co
-SUPABASE_KEY = sb_publishable_uyxE__Tjagj8Zb4oXDVgHw_VE7rt2_J
-Table: fashion_store (columns: key text PK, data jsonb, updated_at timestamptz)
+
+*Then give me your Project URL and anon key from Settings → API."*
+
+Once you have the credentials, store them:
+```bash
+# Add to your shell profile (~/.zshrc or ~/.bashrc):
+export FASHION_SUPABASE_URL="https://your-project.supabase.co"
+export FASHION_SUPABASE_KEY="your-anon-key"
 ```
+
+**Alternative backends:** Any REST-accessible key-value store works (PocketBase, Firebase, Notion API, a simple JSON endpoint). Adapt the read/write calls below to match your backend.
 
 **Reading data** — fetch all four records at session start:
 ```
-GET {SUPABASE_URL}/rest/v1/fashion_store?select=key,data
-Headers: apikey: {SUPABASE_KEY}, Authorization: Bearer {SUPABASE_KEY}
+GET $FASHION_SUPABASE_URL/rest/v1/fashion_store?select=key,data
+Headers: apikey: $FASHION_SUPABASE_KEY, Authorization: Bearer $FASHION_SUPABASE_KEY
 ```
-Map results: `key=profile` → profile, `key=inventory` → inventory, `key=feedback` → feedback, `key=recommendations` → recommendations-history.
+Map: `key=profile` → profile, `key=inventory` → inventory, `key=feedback` → feedback, `key=recommendations` → recommendations-history.
 
-**Writing data** — PATCH immediately after each confirmation:
+**Writing data** — PATCH immediately after each confirmation (verify HTTP 204):
 ```
-PATCH {SUPABASE_URL}/rest/v1/fashion_store?key=eq.{key}
-Headers: apikey: {SUPABASE_KEY}, Authorization: Bearer {SUPABASE_KEY}, Content-Type: application/json
-Body: {"data": {full updated JSON object}, "updated_at": "{ISO timestamp}"}
+PATCH $FASHION_SUPABASE_URL/rest/v1/fashion_store?key=eq.{key}
+Headers: apikey: $FASHION_SUPABASE_KEY, Authorization: Bearer $FASHION_SUPABASE_KEY, Content-Type: application/json
+Body: {"data": {full updated JSON}, "updated_at": "{ISO timestamp}"}
 ```
-
-Use Bash with curl or write a short JS/Python fetch snippet to execute these calls. Always verify HTTP 204 response on writes.
 
 ### recommendations-history.json entry schema
 ```json
