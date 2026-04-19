@@ -389,9 +389,29 @@ Read all files at session start. Write updates immediately after the specific ev
 | feedback.json | `[skill-dir]/feedback.json` | After user confirms outfit log |
 | recommendations-history.json | `[skill-dir]/recommendations-history.json` | After delivering any outfit recommendation |
 
-**Data directory (hardcoded):** `/Users/dawid/Library/CloudStorage/ProtonDrive-dawid.piaskowski@proton.me-folder/Projects/Fashion/`
+**Data backend: Supabase (works from any device)**
 
-Always read and write to this exact path — do not resolve relative to SKILL.md location.
+```
+SUPABASE_URL = https://ocbjtobfmbnbcvkrfzuo.supabase.co
+SUPABASE_KEY = sb_publishable_uyxE__Tjagj8Zb4oXDVgHw_VE7rt2_J
+Table: fashion_store (columns: key text PK, data jsonb, updated_at timestamptz)
+```
+
+**Reading data** — fetch all four records at session start:
+```
+GET {SUPABASE_URL}/rest/v1/fashion_store?select=key,data
+Headers: apikey: {SUPABASE_KEY}, Authorization: Bearer {SUPABASE_KEY}
+```
+Map results: `key=profile` → profile, `key=inventory` → inventory, `key=feedback` → feedback, `key=recommendations` → recommendations-history.
+
+**Writing data** — PATCH immediately after each confirmation:
+```
+PATCH {SUPABASE_URL}/rest/v1/fashion_store?key=eq.{key}
+Headers: apikey: {SUPABASE_KEY}, Authorization: Bearer {SUPABASE_KEY}, Content-Type: application/json
+Body: {"data": {full updated JSON object}, "updated_at": "{ISO timestamp}"}
+```
+
+Use Bash with curl or write a short JS/Python fetch snippet to execute these calls. Always verify HTTP 204 response on writes.
 
 ### recommendations-history.json entry schema
 ```json
