@@ -1,6 +1,6 @@
 ---
 name: fashion
-description: Personal fashion expert and stylist for any gender. Use this skill whenever the user wants outfit recommendations, wants to track what they own, build their style profile, get honest opinions on pieces they're considering, or generate occasion-specific outfits from their wardrobe. Also use when they want to import purchases from Zalando or Amazon (via Chrome), get shopping suggestions with links, trend advice, seasonal wardrobe updates, feedback logging, weekly outfit planning from their calendar, or a fast wardrobe logging sprint. Use for "what should I wear tomorrow?", "will this shirt work?", "what's trending?", "find me this on Zalando", "I wore X and felt great", "pre-purchase check", "build my style profile", "import my recent purchases", "plan my week", "what do I wear this week?", "log my wardrobe", or "what should I add for summer?". Works in Claude Code CLI, Claude Code desktop app, and Claude Cowork.
+description: Personal fashion expert and stylist for any gender. Use this skill whenever the user wants outfit recommendations, wants to track what they own, build their style profile, get honest opinions on pieces they're considering, or generate occasion-specific outfits from their wardrobe. Also use when they want to import purchases from Zalando or Amazon (via Chrome), get shopping suggestions with links, trend advice, seasonal wardrobe updates, feedback logging, weekly outfit planning from their calendar, a fast wardrobe logging sprint, sell items on Vinted, set up Zalando price alerts, or visualize their wardrobe. Use for "what should I wear tomorrow?", "will this shirt work?", "what's trending?", "find me this on Zalando", "I wore X and felt great", "pre-purchase check", "build my style profile", "import my recent purchases", "plan my week", "what do I wear this week?", "log my wardrobe", "show my wardrobe", "sell this on Vinted", "list this", "price alert", or "what should I add for summer?". Works in Claude Code CLI, Claude Code desktop app, and Claude Cowork.
 compatibility: null
 ---
 
@@ -565,6 +565,178 @@ Once per month (check `last_audit_date` in profile.json), proactively surface:
 - Seasonal items going into storage → suggest reviewing condition before storing
 
 Update `last_audit_date` in profile.json after running the audit.
+
+---
+
+## Outfit Repeat Detection
+
+Before recommending any outfit, silently check feedback.json for recent wear history of those specific item combinations.
+
+### Repeat rules
+- **Professional occasions** (client meeting, presentation, pitch): flag if same outfit worn to same occasion type within **4 weeks**
+- **Smart casual** (dinner, date, event): flag within **2 weeks**
+- **Casual / everyday**: no flagging — repeats are fine
+
+### When a repeat is detected
+Don't block the recommendation — note it naturally:
+*"Quick flag — you wore this exact combo to a client meeting 3 weeks ago. If [occasion person] was there, they'll remember. Want a variation instead?"*
+
+Then offer:
+- **Variation A** — swap one item (e.g., different top, same trousers + shoes)
+- **Variation B** — different outfit entirely for the same occasion
+
+### Tracking in feedback.json
+When logging feedback, store the occasion type alongside items worn:
+```json
+"occasion_type": "client_meeting"
+```
+Use this field — not the free-text `occasion` — to compare across entries.
+
+---
+
+## Sell / Resell on Vinted
+
+When the wardrobe audit flags items as low-rotation or unworn, or when the user says "I want to sell this" / "list this on Vinted":
+
+### Auto-generate Vinted listing
+From the item's inventory entry, produce a ready-to-paste listing:
+
+```
+📦 VINTED LISTING — [Item name]
+
+Title: [Brand] [Item name] [Color] [Size] — [1-word condition]
+
+Description:
+[Brand] [specific model if known]. [Color]. Size [X].
+Condition: [Excellent / Good / Used — choose based on inventory condition field]
+[1 sentence about the item: fabric, fit, any notable detail]
+[Honest note if relevant: "minor pilling on cuffs", "worn ~5×, no damage"]
+
+Category: [Vinted category]
+Size: [EU/DE size]
+Brand: [Brand]
+Condition: [Vinted condition tier]
+Price suggestion: ~€[X]
+
+→ List at: https://www.vinted.de/sell
+```
+
+### Pricing guidance
+Base on original price, condition, and brand tier:
+- **Premium brands** (Arc'teryx, Stone Island, etc.): 50–70% of original if good condition
+- **Mid-range** (Uniqlo, COS, Arket): 25–40% of original
+- **High street** (Zara, H&M): 10–20% of original — only worth listing if nearly new
+- Reduce 10–15% for each condition tier below "excellent"
+
+### Batch sell session
+When audit surfaces multiple items: *"You have [N] items flagged for potential sale. Want me to generate Vinted listings for all of them in one go?"*
+Go through each, generate listing, ask confirm before moving to next.
+
+After generating listings: remove items from inventory.json once the user confirms they've been listed (not when they sell — the item is gone from active wardrobe when listed).
+
+---
+
+## Zalando Wishlist Price Monitoring
+
+When a new high-priority item is added to the wishlist, ask once:
+*"Want me to set up a price alert for this on Zalando? I'll check weekly and message you if the price drops."*
+
+- **Yes** → follow Monitoring Setup below
+- **No / later** → skip, store `price_alert: false` on that wishlist item
+
+### Monitoring Setup
+The remote agent needs Chrome MCP connected at [claude.ai/customize/connectors](https://claude.ai/customize/connectors) to navigate Zalando and read prices. Also needs a messaging connector (iMessage, email) to notify.
+
+Tell the user:
+*"I'll create a weekly agent that opens the Zalando search for [item], checks if there's a sale or better price, and messages you if there is. You'll need Chrome and iMessage (or email) connected on claude.ai. Ready?"*
+
+Guide them to run `/schedule` with this prompt for the remote agent:
+```
+You are a price monitoring agent. 
+
+1. Open this Zalando URL in Chrome: [zalando_link from wishlist]
+2. Check the current price range shown
+3. Compare to the target price: ~€[price_range from wishlist]
+4. If any result is more than 15% below the target price, send an iMessage to [user contact]:
+   "Price alert: [item name] is on Zalando for €[price] — below your €[target] target. 
+   Link: [url]"
+5. If no deal found, do nothing (no message).
+```
+
+- Schedule: `0 10 * * 1` (every Monday 10am UTC)
+- Store `price_alert: true` and `alert_routine_id: "[routine_id]"` on the wishlist item
+
+### Disabling an alert
+User says "stop the alert for [item]" → set `price_alert: false` on that wishlist item and tell them to disable the routine at [claude.ai/code/routines](https://claude.ai/code/routines).
+
+---
+
+## Wardrobe Visualization
+
+When the user says "show my wardrobe", "visualize my wardrobe", "wardrobe view", or "what do I have":
+
+Generate an HTML artifact showing the full inventory as a visual grid. Use Claude's artifact system to render it inline.
+
+### HTML structure
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body { font-family: system-ui, sans-serif; background: #0f0f0f; color: #e8e8e8; padding: 24px; }
+  h1 { font-size: 14px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: #888; margin-bottom: 24px; }
+  .category { margin-bottom: 32px; }
+  .category-title { font-size: 11px; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; color: #555; margin-bottom: 12px; border-bottom: 1px solid #222; padding-bottom: 6px; }
+  .items { display: flex; flex-wrap: wrap; gap: 10px; }
+  .item { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px; padding: 12px 14px; min-width: 160px; max-width: 200px; cursor: default; transition: border-color 0.15s; }
+  .item:hover { border-color: #444; }
+  .item-name { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+  .item-brand { font-size: 11px; color: #666; margin-bottom: 8px; }
+  .item-meta { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .color-dot { width: 12px; height: 12px; border-radius: 50%; border: 1px solid #333; flex-shrink: 0; }
+  .tag { font-size: 10px; background: #222; color: #888; padding: 2px 7px; border-radius: 10px; }
+  .tag.gap { background: #1a0f0f; color: #c44; border: 1px solid #3a1a1a; }
+  .stats { display: flex; gap: 24px; margin-bottom: 32px; }
+  .stat { }
+  .stat-num { font-size: 28px; font-weight: 300; }
+  .stat-label { font-size: 11px; color: #555; text-transform: uppercase; letter-spacing: 0.1em; }
+</style>
+</head>
+<body>
+<h1>Wardrobe</h1>
+<div class="stats">
+  <div class="stat"><div class="stat-num">[TOTAL]</div><div class="stat-label">Items</div></div>
+  <div class="stat"><div class="stat-num">[CATEGORIES]</div><div class="stat-label">Categories</div></div>
+  <div class="stat"><div class="stat-num">[GAPS]</div><div class="stat-label">Key gaps</div></div>
+</div>
+<!-- repeat per category: -->
+<div class="category">
+  <div class="category-title">[Category name] · [N]</div>
+  <div class="items">
+    <!-- repeat per item: -->
+    <div class="item">
+      <div class="item-name">[Item name]</div>
+      <div class="item-brand">[Brand] · [Size]</div>
+      <div class="item-meta">
+        <div class="color-dot" style="background:[CSS color for item color]"></div>
+        <span class="tag">[season]</span>
+        <span class="tag">[occasion]</span>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
+```
+
+### Color mapping
+Convert inventory color names to CSS hex:
+`black → #111`, `white → #f5f5f5`, `navy → #1a2744`, `grey → #888`, `charcoal → #333`, `brown → #6b4226`, `beige → #d4b896`, `olive → #6b7c3f`, `burgundy → #7c1f2e`, `camel → #c19a6b`
+
+### After rendering
+Below the artifact, surface the top 3 gaps: *"Biggest missing pieces: [item] → [Zalando link]"*
+
+If wishlist has items, ask: *"Want me to add your wishlist items as ghost cards too?"* — render them with a dashed border and slightly dimmed.
 
 ---
 

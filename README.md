@@ -32,6 +32,10 @@ Built for people who care about looking sharp without spending hours thinking ab
 | **Seasonal planning** | City-calibrated seasons, wardrobe rotation prompts, gap identification |
 | **Trend awareness** | 2025–2026 directions (menswear + womenswear) filtered through your body type and city |
 | **Profile refresh** | Quarterly stylist-style check-in on body changes, life context, style drift |
+| **Outfit repeat detection** | Flags if you wore the same combo to the same occasion type recently — offers a variation |
+| **Vinted resell** | Generates ready-to-paste Vinted listings for low-rotation items flagged in wardrobe audit |
+| **Zalando price alerts** | Optional: weekly remote agent monitors wishlist items on Zalando and messages you if price drops |
+| **Wardrobe visualization** | Renders your full inventory as a visual HTML grid — dark UI, color chips, category breakdown |
 | **Honest opinions** | Direct, not harsh. Will tell you why something doesn't work and what to do instead |
 
 ---
@@ -257,6 +261,7 @@ The skill filters all trends through your specific body type, gender expression,
 
 | Version | Date | Notes |
 |---------|------|-------|
+| 1.3.0 | 2026-04-25 | Outfit repeat detection, Vinted resell, Zalando price alerts, wardrobe visualization |
 | 1.2.0 | 2026-04-25 | Calendar integration, week-ahead planning, wardrobe sprint, weekly reminder opt-in |
 | 1.1.0 | 2026-04-19 | In-store mode, inspiration/wishlist, weather, brand sizing, wardrobe audit, profile refresh |
 | 1.0.0 | 2026-04-19 | Initial release |
