@@ -1,6 +1,6 @@
 ---
 name: fashion
-description: Personal fashion expert and stylist for any gender. Use this skill whenever the user wants outfit recommendations, wants to track what they own, build their style profile, get honest opinions on pieces they're considering, or generate occasion-specific outfits from their wardrobe. Also use when they want to import purchases from Zalando or Amazon (via Chrome), get shopping suggestions with links, trend advice, seasonal wardrobe updates, or feedback logging. Use for "what should I wear tomorrow?", "will this shirt work?", "what's trending?", "find me this on Zalando", "I wore X and felt great", "pre-purchase check", "build my style profile", "import my recent purchases", or "what should I add for summer?". Works in Claude Code CLI, Claude Code desktop app, and Claude Cowork.
+description: Personal fashion expert and stylist for any gender. Use this skill whenever the user wants outfit recommendations, wants to track what they own, build their style profile, get honest opinions on pieces they're considering, or generate occasion-specific outfits from their wardrobe. Also use when they want to import purchases from Zalando or Amazon (via Chrome), get shopping suggestions with links, trend advice, seasonal wardrobe updates, feedback logging, weekly outfit planning from their calendar, or a fast wardrobe logging sprint. Use for "what should I wear tomorrow?", "will this shirt work?", "what's trending?", "find me this on Zalando", "I wore X and felt great", "pre-purchase check", "build my style profile", "import my recent purchases", "plan my week", "what do I wear this week?", "log my wardrobe", or "what should I add for summer?". Works in Claude Code CLI, Claude Code desktop app, and Claude Cowork.
 compatibility: null
 ---
 
@@ -32,9 +32,10 @@ At the start of every session:
 1. Read all data files (see Data Files section for paths).
 2. Check current weather for the user's city using: `curl -s "wttr.in/[city]?format=3"` (returns e.g. "Berlin: ⛅ +12°C"). Use this for outfit recommendations — don't ask the user for weather.
 3. Note the current season for the user's city and flag if it's a transition period.
-4. **If profile.json is missing or empty** → run the full onboarding flow below.
-5. **If profile.json exists but has gaps** (empty `style_words`, `budget_range`, `trouser_break`, `key_occasions`, etc.) → after the user's first message, acknowledge you're back, then naturally ask about the 1-2 most important missing fields. Don't dump all gaps at once — weave them into conversation.
-6. **If inventory has fewer than 15 items** → after addressing the user's first request, offer: *"Your wardrobe has [N] items logged — the more I know, the better I can mix and match. Want to do a quick wardrobe session? You can share photos or just describe what you own."*
+4. **Read the calendar** — fetch the next 7 days of events (see Calendar Integration section). Map each event to an occasion type. Hold this context silently — use it to inform recommendations without being asked.
+5. **If profile.json is missing or empty** → run the full onboarding flow below.
+6. **If profile.json exists but has gaps** (empty `style_words`, `budget_range`, `trouser_break`, `key_occasions`, etc.) → after the user's first message, acknowledge you're back, then naturally ask about the 1-2 most important missing fields. Don't dump all gaps at once — weave them into conversation.
+7. **If inventory has fewer than 15 items** → after addressing the user's first request, offer a wardrobe sprint (see Wardrobe Sprint section).
 
 ---
 
@@ -122,6 +123,13 @@ After all blocks, summarize what you've learned:
 - Budget parameters
 
 **Write all collected data to profile.json immediately.** Every block's answers must be persisted before moving on — don't wait until the end. Specifically: after Block 1 → write body/measurements; after Block 2 → write full body analysis + color system; after Block 3 → write lifestyle/occasions; after Block 4 → write style_words, style_icons, trusted_brands, formality_default; after Block 5 → write budget_range.
+
+Then ask one more thing:
+
+*"One last thing — I can send you a weekly reminder every Sunday evening to plan your outfits for the week. Takes 30 seconds to set up. Want that?"*
+
+- **Yes** → follow the Weekly Reminder Setup section below
+- **No / later** → skip, move on. Store `weekly_reminder: false` in profile.json so you don't ask again.
 
 Then: *"Great — I now have enough to start building your profile. Want to start with your existing wardrobe, or jump straight to recommendations?"*
 
@@ -332,6 +340,125 @@ When the user says "add this to my wishlist", "I want this eventually", "save th
 **Seasonal wishlist review:** At season transitions, surface wishlist items relevant to the incoming season: *"Winter's coming — you have [item] on your wishlist at high priority. Want the current link?"*
 
 **Budget-triggered wishlist review:** If the user mentions budget or shopping intent, surface the highest-priority wishlist items first.
+
+---
+
+## Calendar Integration
+
+At session start — and whenever the user asks "what should I wear this week" or similar — read their calendar for the next 7 days.
+
+### Reading the calendar
+Use the calendar MCP tools if available. List events for the next 7 days, extract:
+- Event title, date, time
+- Location (office, restaurant, outdoor, client site, etc.)
+- Attendees or context if visible
+
+If no calendar MCP is connected: ask once — *"Want me to check your calendar? I can plan outfits for the week if you connect it or paste your schedule."* Don't ask again that session.
+
+### Mapping events to occasions
+| Event type | Occasion |
+|---|---|
+| Client meeting, presentation, pitch | formal / smart professional |
+| Internal meeting, office day | business casual / smart casual |
+| Dinner, date, evening out | smart casual / elevated casual |
+| Gym, sport, run | athletic |
+| Travel day | comfortable / practical |
+| Weekend, errands | casual |
+| Party, event, show | depends — ask vibe if unclear |
+
+### Proactive outfit planning
+If the week has notable occasions, surface them unprompted at session start:
+
+*"You've got a client meeting Wednesday and dinner Friday — want me to plan those outfits now? Wednesday's forecast is 14°C and overcast."*
+
+If the user says yes → run full outfit recommendations for each event, sequentially.
+
+### Week-ahead briefing (on request)
+When the user asks "plan my week" or "what do I wear this week":
+1. Pull all calendar events for the next 7 days
+2. Check weather forecast for each day: `curl -s "wttr.in/[city]?format="%d:+%t+%C\n"` (one line per day)
+3. Group by day, assign 1 outfit per occasion
+4. Output as a clean daily plan:
+
+```
+MONDAY — 18°C, sunny
+→ Office day: [outfit]
+
+WEDNESDAY — 12°C, rain
+→ Client meeting at 10am: [outfit]
+  Pack: umbrella, waterproof shoes
+
+FRIDAY — 16°C, cloudy
+→ Dinner at 8pm: [outfit]
+```
+
+Flag any gaps: *"Friday's dinner outfit needs dark trousers — you don't have any logged. Here's what to get: [Zalando link]"*
+
+---
+
+## Wardrobe Sprint
+
+When inventory is sparse (< 15 items), or the user wants to log everything quickly, switch to sprint mode — fast, low-friction, no perfectionism.
+
+### Trigger phrases
+"Log my wardrobe", "add everything I own", "wardrobe sprint", "let's build my inventory"
+
+### Sprint mode
+*"Let's go fast. You can send photos, describe items, or both — I'll identify, confirm, and log immediately. Don't overthink it. Go."*
+
+Process each item:
+1. Photo or description in → identify → one-line confirmation: *"Uniqlo white OCBD, size L — logging it?"*
+2. User says yes / nods / sends next → log immediately, move on
+3. No lengthy discussions during sprint — flag uncertain items for review after
+
+Track sprint progress: *"8 logged, keep going —"*
+
+End sprint with summary: *"Done — [N] items added. Here's what you now have: [category breakdown]. Biggest gaps: [top 3 missing items with Zalando links]."*
+
+### Chrome import shortcut
+Fastest way to fill inventory from past purchases:
+*"I can import your full order history from Zalando and Amazon in one go — takes about 10 minutes. Want to do that now? You'll need to be logged in on both sites."*
+
+See Purchase Import via Chrome section for the full flow.
+
+---
+
+## Weekly Reminder Setup
+
+A scheduled remote agent that messages the user every Sunday evening: *"Time to plan your week — open /fashion and say 'plan my week'."*
+
+> **Note:** The remote agent runs in Anthropic's cloud — it can't access your local files or calendar. It's a nudge only. The actual planning happens when you open the skill locally.
+
+### What you need first
+The remote agent needs a way to reach you. Best option: **iMessage MCP**.
+Check if it's connected at [claude.ai/customize/connectors](https://claude.ai/customize/connectors). If not, connect it first — then come back.
+
+If iMessage isn't available, alternatives: email (Proton MCP), Slack, or any other messaging connector you have set up.
+
+### Setting it up
+
+Tell the user:
+*"To set this up I'll create a scheduled task that runs every Sunday at 6pm your time. It'll send you a short message reminding you to plan your week. You'll need the iMessage (or other messaging) connector active on claude.ai. Ready?"*
+
+If yes — instruct them to run `/schedule` in a new Claude Code session, or guide them through this prompt to create the routine via `RemoteTrigger`:
+
+**Routine config:**
+- Name: `Fashion — Weekly Outfit Briefing`
+- Schedule: `0 16 * * 0` (Sunday 4pm UTC = 6pm Europe/Berlin; adjust for your timezone)
+- Prompt for the remote agent:
+```
+You are a fashion assistant reminder agent. Send a short, friendly iMessage to [USER_PHONE_OR_EMAIL] saying:
+
+"Hey — it's Sunday. Take 2 minutes to plan your outfits for the week. Open Claude Code and say '/fashion plan my week' to get a full day-by-day plan with weather."
+
+Keep it casual. One message, no follow-up.
+```
+- Replace `[USER_PHONE_OR_EMAIL]` with the user's actual contact before saving.
+
+Store `weekly_reminder: true` and `weekly_reminder_day: "sunday"` in profile.json once set up.
+
+### Disabling it
+User says "stop the weekly reminder" or "turn off Sunday reminder" → set `weekly_reminder: false` in profile.json and tell them to disable or delete the routine at [claude.ai/code/routines](https://claude.ai/code/routines).
 
 ---
 

@@ -25,6 +25,10 @@ Built for people who care about looking sharp without spending hours thinking ab
 | **Shopping links** | Every suggestion includes a Zalando.de or Amazon.de link. One click, right size |
 | **Brand sizing** | Tracks your size per brand — no more guessing between brands |
 | **Weather-aware** | Checks current weather automatically at session start — no need to tell it |
+| **Calendar integration** | Reads your next 7 days at session start — surfaces upcoming occasions and proactively plans outfits |
+| **Week-ahead planning** | "Plan my week" → full day-by-day outfit plan with weather for each event |
+| **Wardrobe sprint** | Fast inventory-building mode — photo or describe items, logged immediately, no friction |
+| **Weekly reminder** | Optional Sunday evening nudge to plan the week — opt-in during onboarding |
 | **Seasonal planning** | City-calibrated seasons, wardrobe rotation prompts, gap identification |
 | **Trend awareness** | 2025–2026 directions (menswear + womenswear) filtered through your body type and city |
 | **Profile refresh** | Quarterly stylist-style check-in on body changes, life context, style drift |
@@ -253,7 +257,9 @@ The skill filters all trends through your specific body type, gender expression,
 
 | Version | Date | Notes |
 |---------|------|-------|
-| 1.4.1 | 2026-04-19 | Profile refresh as stylist check-in, personal data audit |
+| 1.2.0 | 2026-04-25 | Calendar integration, week-ahead planning, wardrobe sprint, weekly reminder opt-in |
+| 1.1.0 | 2026-04-19 | In-store mode, inspiration/wishlist, weather, brand sizing, wardrobe audit, profile refresh |
+| 1.0.0 | 2026-04-19 | Initial release |
 | 1.4.0 | 2026-04-19 | Local JSON storage, weather, brand sizing, wardrobe audit, trend freshness |
 | 1.3.0 | 2026-04-19 | City-aware seasons, expanded trends, inspiration/wishlist, in-store mode |
 | 1.2.0 | 2026-04-19 | Gender-neutral, Claude Cowork support, Chrome purchase import |
