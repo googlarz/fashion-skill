@@ -37,6 +37,8 @@ Built for people who care about looking sharp without spending hours thinking ab
 | **Profile refresh** | Quarterly stylist-style check-in — body changes, life context, style drift |
 | **Weekly reminder** | Optional Sunday evening nudge to plan your week — opt-in during onboarding |
 | **Mobile summary** | Generates a compact profile snapshot to paste into a claude.ai Project for on-the-go use |
+| **Color palette visual** | "Show my color palette" → HTML showing your color system: best colors, accents, what to avoid, rules |
+| **New arrivals alerts** | Optional weekly agent that monitors your trusted brands on Zalando and messages you when something matches |
 | **Honest opinions** | Direct, not harsh. Will tell you why something doesn't work and what to do instead |
 
 ---
@@ -235,6 +237,7 @@ Filtered through your body type, gender expression, and city. Acknowledges train
 
 | Version | Date | Notes |
 |---------|------|-------|
+| 1.4.0 | 2026-04-25 | Color palette visual, new arrivals alerts |
 | 1.3.0 | 2026-04-25 | Outfit repeat detection, Vinted resell, Zalando price alerts, wardrobe visualization |
 | 1.2.0 | 2026-04-25 | Calendar integration, week-ahead planning, wardrobe sprint, weekly reminder |
 | 1.1.0 | 2026-04-25 | In-store mode, inspiration/wishlist, weather, brand sizing, wardrobe audit, profile refresh |

@@ -1,6 +1,6 @@
 ---
 name: fashion
-description: Personal fashion expert and stylist for any gender. Use this skill whenever the user wants outfit recommendations, wants to track what they own, build their style profile, get honest opinions on pieces they're considering, or generate occasion-specific outfits from their wardrobe. Also use when they want to import purchases from Zalando or Amazon (via Chrome), get shopping suggestions with links, trend advice, seasonal wardrobe updates, feedback logging, weekly outfit planning from their calendar, a fast wardrobe logging sprint, sell items on Vinted, set up Zalando price alerts, or visualize their wardrobe. Use for "what should I wear tomorrow?", "will this shirt work?", "what's trending?", "find me this on Zalando", "I wore X and felt great", "pre-purchase check", "build my style profile", "import my recent purchases", "plan my week", "what do I wear this week?", "log my wardrobe", "show my wardrobe", "sell this on Vinted", "list this", "price alert", or "what should I add for summer?". Works in Claude Code CLI, Claude Code desktop app, and Claude Cowork.
+description: Personal fashion expert and stylist for any gender. Use this skill whenever the user wants outfit recommendations, wants to track what they own, build their style profile, get honest opinions on pieces they're considering, or generate occasion-specific outfits from their wardrobe. Also use when they want to import purchases from Zalando or Amazon (via Chrome), get shopping suggestions with links, trend advice, seasonal wardrobe updates, feedback logging, weekly outfit planning from their calendar, a fast wardrobe logging sprint, sell items on Vinted, set up Zalando price alerts, visualize their wardrobe, see their color palette, or get new arrivals alerts from trusted brands. Use for "what should I wear tomorrow?", "will this shirt work?", "what's trending?", "find me this on Zalando", "I wore X and felt great", "pre-purchase check", "build my style profile", "import my recent purchases", "plan my week", "what do I wear this week?", "log my wardrobe", "show my wardrobe", "show my color palette", "what colors work for me", "new arrivals", "sell this on Vinted", "list this", "price alert", or "what should I add for summer?". Works in Claude Code CLI, Claude Code desktop app, and Claude Cowork.
 compatibility: null
 ---
 
@@ -565,6 +565,153 @@ Once per month (check `last_audit_date` in profile.json), proactively surface:
 - Seasonal items going into storage → suggest reviewing condition before storing
 
 Update `last_audit_date` in profile.json after running the audit.
+
+---
+
+## Color Palette Visual
+
+When the user says "show my color palette", "what colors work for me", "my color system", or "palette":
+
+Generate an HTML artifact showing their personal color system derived from profile.json (`color_system` field — e.g. Cool Winter, Warm Autumn, True Summer, etc.).
+
+### HTML structure
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body { font-family: system-ui, sans-serif; background: #0f0f0f; color: #e8e8e8; padding: 32px; max-width: 680px; }
+  h1 { font-size: 13px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: #555; margin-bottom: 4px; }
+  h2 { font-size: 22px; font-weight: 300; margin: 0 0 8px; }
+  .subtitle { font-size: 13px; color: #666; margin-bottom: 32px; line-height: 1.5; }
+  .section { margin-bottom: 28px; }
+  .section-title { font-size: 10px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: #444; margin-bottom: 12px; }
+  .swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+  .swatch { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .swatch-color { width: 56px; height: 56px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.08); }
+  .swatch-name { font-size: 10px; color: #555; text-align: center; max-width: 64px; line-height: 1.3; }
+  .avoid { opacity: 0.4; position: relative; }
+  .avoid .swatch-color { filter: grayscale(0.3); }
+  .avoid::after { content: "✕"; position: absolute; top: 16px; font-size: 18px; color: #c44; }
+  .rule { font-size: 13px; color: #888; padding: 8px 0; border-bottom: 1px solid #1e1e1e; line-height: 1.5; }
+  .rule:last-child { border: none; }
+  .rule strong { color: #ccc; }
+</style>
+</head>
+<body>
+<h1>Color System</h1>
+<h2>[Color System Name]</h2>
+<p class="subtitle">[2-sentence description of what this color system means — undertones, contrast level, seasonal character]</p>
+
+<div class="section">
+  <div class="section-title">Your best colors</div>
+  <div class="swatches">
+    <!-- 8-10 swatches: name + hex for this color system's core palette -->
+    <div class="swatch"><div class="swatch-color" style="background:#[hex]"></div><div class="swatch-name">[name]</div></div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Accent & statement</div>
+  <div class="swatches">
+    <!-- 3-4 swatches: bolder colors that work as accent for this system -->
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Avoid</div>
+  <div class="swatches">
+    <!-- 3-4 swatches: colors that clash with this system, shown dimmed with ✕ -->
+    <div class="swatch avoid"><div class="swatch-color" style="background:#[hex]"></div><div class="swatch-name">[name]</div></div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Rules for you</div>
+  <div class="rule"><strong>Contrast:</strong> [high/medium/low contrast — what it means for outfit combinations]</div>
+  <div class="rule"><strong>Metals:</strong> [silver vs gold — which works]</div>
+  <div class="rule"><strong>Prints:</strong> [what print styles work — geometric, graphic, none, etc.]</div>
+  <div class="rule"><strong>Denim:</strong> [which wash — dark, medium, avoid raw, etc.]</div>
+  <div class="rule"><strong>White vs cream:</strong> [which version works better against their skin]</div>
+</div>
+</body>
+</html>
+```
+
+### Color system palettes
+
+Use these as your base — adapt hex values to the specific variant the user has:
+
+**Cool Winter:** Navy `#1a2744`, black `#111`, pure white `#f5f5f5`, charcoal `#333`, burgundy `#7c1f2e`, royal blue `#2346a0`, forest `#1a3a2a`, cool grey `#8a9aaa`, icy pink `#d4b8c4`. Avoid: orange, warm brown, mustard, olive.
+
+**Warm Autumn:** Camel `#c19a6b`, burnt orange `#b85c2a`, olive `#6b7c3f`, rust `#a0472a`, chocolate `#4a2a1a`, gold `#c8a84b`, cream `#f0e8d0`, forest `#2a3a1a`, terracotta `#c4613a`. Avoid: black, icy pastels, cool grey, silver.
+
+**True Summer:** Dusty rose `#c4929a`, soft lavender `#9a8ab4`, soft blue `#6a8ab4`, mauve `#a47a8a`, grey-blue `#6a7a8a`, powder pink `#d4aab4`, off-white `#f0ece8`. Avoid: black, orange, bright yellow, rust.
+
+**Bright Spring:** Coral `#e86040`, warm turquoise `#2ab4a0`, golden yellow `#e8c030`, bright white `#ffffff`, warm green `#4ab040`, peach `#f09070`. Avoid: dusty/muted tones, black, brown.
+
+**True Autumn:** Rust `#b84820`, camel `#c09050`, warm brown `#7a4a20`, olive `#788040`, gold `#c8a040`, cream `#f0e4c0`, brick `#b04030`. Avoid: black, icy tones, silver, cool grey.
+
+Fill in other systems from your training knowledge. Always derive the palette from the user's profile — never invent a system they weren't assigned.
+
+### After rendering
+Below the artifact: *"This is your palette. Every item in your wardrobe that falls outside it is a potential friction point — want me to flag which ones?"*
+
+---
+
+## New Arrivals Alerts
+
+When the user has trusted brands logged in profile.json (`trusted_brands` field), offer a weekly agent that monitors those brands for new drops and messages them.
+
+### When to offer
+- After onboarding Block 4 (trusted brands collected): *"You've got [Brand A], [Brand B] in your trusted brands. Want me to set up a weekly alert when they drop new pieces in your size and color range?"*
+- Or when user says "let me know when [brand] has new stuff", "new arrivals alert", "watch [brand] for me"
+
+Ask: *"Want a weekly alert for new arrivals from your trusted brands? I'll check their Zalando pages every Monday and message you if something matches your style and color system."*
+
+- **Yes** → setup below
+- **No** → store `arrivals_alert: false` in profile, don't ask again
+
+### What the remote agent checks
+For each trusted brand, the agent:
+1. Opens Zalando search filtered to that brand: `https://www.zalando.de/search/?q=[brand]&order=activation_date`
+2. Reads the first page — newest arrivals
+3. Filters mentally against the user's profile: color system, size, style direction, occasions
+4. If 1+ items match → sends a message with item name, price, and Zalando link
+5. If nothing matches → no message (no noise)
+
+### Setup
+Requires Chrome MCP + messaging connector (iMessage or email) at [claude.ai/customize/connectors](https://claude.ai/customize/connectors).
+
+Guide the user through `/schedule` with this prompt template:
+
+```
+You are a fashion arrivals monitoring agent for [USER_NAME].
+
+Their profile:
+- Trusted brands: [brand_1], [brand_2], [brand_3]
+- Color system: [e.g. Cool Winter — best colors: navy, black, white, burgundy, charcoal]
+- Sizes: [collar X, trousers WXX LXX, shoe XX]
+- Style: [style_words]
+- Avoid: [colors/styles to skip]
+
+For each trusted brand:
+1. Open in Chrome: https://www.zalando.de/search/?q=[brand]&order=activation_date
+2. Read the first 20 results — newest first
+3. Filter: does any item match their color system AND style direction AND available in their size?
+4. If yes: send an iMessage to [USER_CONTACT]:
+   "New at [Brand]: [item name] — €[price] in [color]. Fits your [Cool Winter / style] profile.
+   → [Zalando URL]"
+   One message per matching item, max 3 per brand.
+5. If nothing matches: do nothing.
+```
+
+- Schedule: `0 9 * * 1` (every Monday 9am UTC)
+- Store `arrivals_alert: true` and `arrivals_alert_brands: [list]` in profile.json
+
+### Disabling
+*"Stop new arrivals alerts"* → set `arrivals_alert: false`, direct to [claude.ai/code/routines](https://claude.ai/code/routines) to disable the routine.
 
 ---
 
