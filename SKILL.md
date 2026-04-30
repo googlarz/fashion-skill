@@ -1,6 +1,6 @@
 ---
 name: fashion
-description: Personal fashion expert and stylist for any gender. Use this skill whenever the user wants outfit recommendations, wants to track what they own, build their style profile, get honest opinions on pieces they're considering, or generate occasion-specific outfits from their wardrobe. Also use when they want to import purchases from Zalando or Amazon (via Chrome), get shopping suggestions with links, trend advice, seasonal wardrobe updates, feedback logging, weekly outfit planning from their calendar, a fast wardrobe logging sprint, sell items on Vinted, set up Zalando price alerts, visualize their wardrobe, see their color palette, or get new arrivals alerts from trusted brands. Use for "what should I wear tomorrow?", "will this shirt work?", "what's trending?", "find me this on Zalando", "I wore X and felt great", "pre-purchase check", "build my style profile", "import my recent purchases", "plan my week", "what do I wear this week?", "log my wardrobe", "show my wardrobe", "show my color palette", "what colors work for me", "new arrivals", "sell this on Vinted", "list this", "price alert", or "what should I add for summer?". Works in Claude Code CLI, Claude Code desktop app, and Claude Cowork.
+description: Personal fashion expert and stylist for any gender. Use this skill whenever the user wants outfit recommendations, wants to track what they own, build their style profile, get honest opinions on pieces they're considering, or generate occasion-specific outfits from their wardrobe. Also use when they want to import purchases from Zalando or Amazon (via Chrome), get shopping suggestions with links, trend advice, seasonal wardrobe updates, feedback logging, weekly outfit planning from their calendar, a fast wardrobe logging sprint, sell items on Vinted, set up Zalando price alerts, visualize their wardrobe, see their color palette, or get new arrivals alerts from any brand website. Use for "what should I wear tomorrow?", "will this shirt work?", "what's trending?", "find me this on Zalando", "I wore X and felt great", "pre-purchase check", "build my style profile", "import my recent purchases", "plan my week", "what do I wear this week?", "log my wardrobe", "show my wardrobe", "show my color palette", "what colors work for me", "new arrivals", "watch this brand for me", "alert me for new shoes", "sell this on Vinted", "list this", "price alert", or "what should I add for summer?". Works in Claude Code CLI, Claude Code desktop app, and Claude Cowork.
 compatibility: null
 ---
 
@@ -673,24 +673,51 @@ Below the artifact: *"This is your palette. Every item in your wardrobe that fal
 
 ## New Arrivals Alerts
 
-When the user has trusted brands logged in profile.json (`trusted_brands` field), offer a weekly agent that monitors those brands for new drops and messages them.
+Monitor any brand's website for new drops — on any site, with the user's own filters applied. Works for Adidas, On, Suitsupply, Zalando, or anywhere.
 
 ### When to offer
-- After onboarding Block 4 (trusted brands collected): *"You've got [Brand A], [Brand B] in your trusted brands. Want me to set up a weekly alert when they drop new pieces in your size and color range?"*
-- Or when user says "let me know when [brand] has new stuff", "new arrivals alert", "watch [brand] for me"
+- After onboarding Block 4 (trusted brands collected): *"You've got [Brand A], [Brand B] in your trusted brands. Want a weekly alert when they drop something new in your size?"*
+- Or when user says "let me know when [brand] has new stuff", "watch [brand] for me", "new arrivals alert", "alert me for new [shoes/jackets/etc]"
 
-Ask: *"Want a weekly alert for new arrivals from your trusted brands? I'll check their Zalando pages every Monday and message you if something matches your style and color system."*
+### Setup flow
 
-- **Yes** → setup below
-- **No** → store `arrivals_alert: false` in profile, don't ask again
+Ask three questions, one at a time:
 
-### What the remote agent checks
-For each trusted brand, the agent:
-1. Opens Zalando search filtered to that brand: `https://www.zalando.de/search/?q=[brand]&order=activation_date`
-2. Reads the first page — newest arrivals
-3. Filters mentally against the user's profile: color system, size, style direction, occasions
-4. If 1+ items match → sends a message with item name, price, and Zalando link
-5. If nothing matches → no message (no noise)
+**1. Which brand and category?**
+*"Which brand — and is there a specific category? E.g. Adidas shoes, On running gear, Suitsupply blazers."*
+
+**2. Frequency?**
+*"How often — weekly (Monday) or twice a week (Mon + Thu)?"*
+
+**3. The filtered URL — this is the key step:**
+*"Now the important part. Go to [brand]'s website, apply your filters — category, size, sort by Newest — then copy the URL and paste it here. The agent will open exactly that page every time, so whatever filters you set is what it monitors."*
+
+Wait for the URL. If it's a Zalando search URL, that's fine too. Any URL works.
+
+Example for Adidas shoes size 49:
+- User goes to adidas.de → Shoes → Size 49 → Sort: Newest
+- Copies: `https://www.adidas.de/schuhe?sz=49&sortBy=newest`
+- Pastes it → done
+
+Store as a `custom_alerts` entry in profile.json (see schema below).
+
+### What the remote agent does
+
+1. Opens the user-provided URL in Chrome (already filtered — no extra logic needed)
+2. Reads the first page — product names, prices, links
+3. Sends a digest message to the user:
+
+```
+🆕 New at Adidas (shoes, size 49) — Mon 28 Apr
+
+• Ultraboost 25 — €180 → https://adidas.de/...
+• Samba OG — €100 → https://adidas.de/...
+• Forum Low — €90 → https://adidas.de/...
+
+[+ 4 more on page]
+```
+
+Always sends — no filtering, no "nothing matched" silence. The user's pre-applied filters on the URL do the filtering. Keep it simple: open URL → read items → send digest.
 
 ### Setup
 Requires Chrome MCP + messaging connector (iMessage or email) at [claude.ai/customize/connectors](https://claude.ai/customize/connectors).
@@ -698,31 +725,55 @@ Requires Chrome MCP + messaging connector (iMessage or email) at [claude.ai/cust
 Guide the user through `/schedule` with this prompt template:
 
 ```
-You are a fashion arrivals monitoring agent for [USER_NAME].
+You are a new arrivals digest agent for [USER_NAME].
 
-Their profile:
-- Trusted brands: [brand_1], [brand_2], [brand_3]
-- Color system: [e.g. Cool Winter — best colors: navy, black, white, burgundy, charcoal]
-- Sizes: [collar X, trousers WXX LXX, shoe XX]
-- Style: [style_words]
-- Avoid: [colors/styles to skip]
+Alert config:
+- Brand/category: [e.g. Adidas shoes size 49]
+- URL to monitor: [exact URL the user provided, with filters applied]
+- Send digest to: [USER_CONTACT via iMessage/email]
 
-For each trusted brand:
-1. Open in Chrome: https://www.zalando.de/search/?q=[brand]&order=activation_date
-2. Read the first 20 results — newest first
-3. Filter: does any item match their color system AND style direction AND available in their size?
-4. If yes: send an iMessage to [USER_CONTACT]:
-   "New at [Brand]: [item name] — €[price] in [color]. Fits your [Cool Winter / style] profile.
-   → [Zalando URL]"
-   One message per matching item, max 3 per brand.
-5. If nothing matches: do nothing.
+Steps:
+1. Open this URL in Chrome: [URL]
+2. Wait for the page to fully load
+3. Read all visible product names, prices, and their individual URLs (first page only)
+4. Send a digest message to [USER_CONTACT]:
+
+"🆕 New at [Brand] ([category]) — [today's date]
+
+[list each item as: • [name] — €[price] → [url]]
+
+[If more than 8 items: "+ X more — [full page URL]"]"
+
+Always send the digest even if items look the same as last week — the user decides what's worth clicking.
 ```
 
-- Schedule: `0 9 * * 1` (every Monday 9am UTC)
-- Store `arrivals_alert: true` and `arrivals_alert_brands: [list]` in profile.json
+Cron schedule:
+- Weekly: `0 8 * * 1` (Monday 8am UTC)
+- Twice weekly: `0 8 * * 1,4` (Mon + Thu 8am UTC)
 
-### Disabling
-*"Stop new arrivals alerts"* → set `arrivals_alert: false`, direct to [claude.ai/code/routines](https://claude.ai/code/routines) to disable the routine.
+### profile.json schema for custom alerts
+
+```json
+"custom_alerts": [
+  {
+    "id": "alert_001",
+    "brand": "Adidas",
+    "category": "shoes size 49",
+    "url": "https://www.adidas.de/schuhe?sz=49&sortBy=newest",
+    "frequency": "weekly",
+    "contact": "[user contact]",
+    "routine_id": "[CCR routine ID once created]",
+    "created_date": "2026-04-29",
+    "enabled": true
+  }
+]
+```
+
+### Managing alerts
+- *"Show my alerts"* → list all `custom_alerts` entries with brand, frequency, URL
+- *"Pause [brand] alert"* → set `enabled: false`, disable routine at [claude.ai/code/routines](https://claude.ai/code/routines)
+- *"Add another alert"* → run setup flow again, append new entry to `custom_alerts`
+- *"Change [brand] URL"* → update `url` in profile.json, update routine prompt at [claude.ai/code/routines](https://claude.ai/code/routines)
 
 ---
 
