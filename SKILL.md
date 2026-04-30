@@ -673,7 +673,9 @@ Below the artifact: *"This is your palette. Every item in your wardrobe that fal
 
 ## New Arrivals Alerts
 
-Monitor any brand's website for new drops — on any site, with the user's own filters applied. Works for Adidas, On, Suitsupply, Zalando, or anywhere.
+Monitor any brand's website for new drops. Works for Adidas, On, Suitsupply, Zalando, or any site — using a pre-filtered URL the user provides.
+
+**Key design:** Runs as a local scheduled task (not remote CCR). This gives it access to the local data dir, so it can persist what it's already seen and only alert on genuinely new items. No more weekly noise when nothing changed.
 
 ### When to offer
 - After onboarding Block 4 (trusted brands collected): *"You've got [Brand A], [Brand B] in your trusted brands. Want a weekly alert when they drop something new in your size?"*
@@ -681,7 +683,7 @@ Monitor any brand's website for new drops — on any site, with the user's own f
 
 ### Setup flow
 
-Ask three questions, one at a time:
+Ask these questions one at a time:
 
 **1. Which brand and category?**
 *"Which brand — and is there a specific category? E.g. Adidas shoes, On running gear, Suitsupply blazers."*
@@ -690,66 +692,108 @@ Ask three questions, one at a time:
 *"How often — weekly (Monday) or twice a week (Mon + Thu)?"*
 
 **3. The filtered URL — this is the key step:**
-*"Now the important part. Go to [brand]'s website, apply your filters — category, size, sort by Newest — then copy the URL and paste it here. The agent will open exactly that page every time, so whatever filters you set is what it monitors."*
+*"Now the important part. Go to [brand]'s website, apply your filters — category, size, sort by Newest — then copy the URL and paste it here."*
 
-Wait for the URL. If it's a Zalando search URL, that's fine too. Any URL works.
+Wait for the URL, then give this tip:
 
-Example for Adidas shoes size 49:
-- User goes to adidas.de → Shoes → Size 49 → Sort: Newest
-- Copies: `https://www.adidas.de/schuhe?sz=49&sortBy=newest`
-- Pastes it → done
+*"One more thing — if the site has a 'New this week' or 'Added in last 7 days' filter, apply that too before copying the URL. Sites like Zalando have it under Filters → New Arrivals. With that set, the page will only ever show recent drops, which means even faster scanning."*
 
-Store as a `custom_alerts` entry in profile.json (see schema below).
+After they paste the URL, store a `custom_alerts` entry in profile.json (see schema below) and set up the local task.
 
-### What the remote agent does
+### How it works — local task with diff tracking
 
-1. Opens the user-provided URL in Chrome (already filtered — no extra logic needed)
-2. Reads the first page — product names, prices, links
-3. Sends a digest message to the user:
+The alert runs as a local scheduled Claude task. On each run it:
 
-```
-🆕 New at Adidas (shoes, size 49) — Mon 28 Apr
+1. Reads `monitoring_state.json` from the Fashion data dir — finds the `seen_ids` list for this alert (item name + price fingerprints seen on previous runs)
+2. Opens the user-provided URL in Chrome
+3. Reads all visible product names, prices, and URLs on page 1
+4. Computes the diff: **new items = items not in `seen_ids`**
+5. If new items found → sends a digest (iMessage or email) with only the new ones
+6. If nothing new → sends nothing. Silence = no change
+7. Updates `monitoring_state.json` with the current full item list
 
-• Ultraboost 25 — €180 → https://adidas.de/...
-• Samba OG — €100 → https://adidas.de/...
-• Forum Low — €90 → https://adidas.de/...
+**First run:** No `seen_ids` exist yet. Send nothing — just capture the baseline and write it to state. Tell the user: *"Baseline captured for [brand]. I'll alert you when new items appear."*
 
-[+ 4 more on page]
-```
+### Task prompt template
 
-Always sends — no filtering, no "nothing matched" silence. The user's pre-applied filters on the URL do the filtering. Keep it simple: open URL → read items → send digest.
-
-### Setup
-Requires Chrome MCP + messaging connector (iMessage or email) at [claude.ai/customize/connectors](https://claude.ai/customize/connectors).
-
-Guide the user through `/schedule` with this prompt template:
+When creating the scheduled task via `mcp__scheduled-tasks__create_scheduled_task`, use this prompt:
 
 ```
-You are a new arrivals digest agent for [USER_NAME].
+You are a new arrivals monitoring agent.
 
 Alert config:
-- Brand/category: [e.g. Adidas shoes size 49]
-- URL to monitor: [exact URL the user provided, with filters applied]
-- Send digest to: [USER_CONTACT via iMessage/email]
+- Alert ID: [alert_id from profile.json]
+- Brand/category: [brand + category label]
+- URL: [exact URL user provided]
+- State file: [FASHION_DATA_DIR]/monitoring_state.json
+- Notify via: [iMessage to CONTACT / email to ADDRESS]
 
-Steps:
-1. Open this URL in Chrome: [URL]
-2. Wait for the page to fully load
-3. Read all visible product names, prices, and their individual URLs (first page only)
-4. Send a digest message to [USER_CONTACT]:
+Run this exact sequence:
 
-"🆕 New at [Brand] ([category]) — [today's date]
+1. Read [FASHION_DATA_DIR]/monitoring_state.json
+   - Find the entry for alert ID [alert_id]
+   - Extract its `seen_ids` array (list of "name||price" strings)
+   - If the file or entry doesn't exist: seen_ids = [] (first run)
 
-[list each item as: • [name] — €[price] → [url]]
+2. Open [URL] in Chrome. Wait for products to fully load.
+   Read all visible product cards on page 1: name, price, product URL.
+   Build current_items as a list of {name, price, url} objects.
+   Build current_ids as ["name||price", ...] for each item.
 
-[If more than 8 items: "+ X more — [full page URL]"]"
+3. Compute new_items = items in current_items whose "name||price" is NOT in seen_ids.
 
-Always send the digest even if items look the same as last week — the user decides what's worth clicking.
+4. If seen_ids was empty (first run):
+   - Do NOT send any notification
+   - Update monitoring_state.json (step 5)
+   - Stop here
+
+5. If new_items is not empty:
+   Send this message to [CONTACT/ADDRESS]:
+
+   "🆕 New at [Brand] ([category]) — [today's date]
+
+   [for each new item: • [name] — €[price] → [url]]
+
+   [if more than 8 new items: show first 8 then '+ N more → [base url]']"
+
+   If new_items is empty: send nothing.
+
+6. Update monitoring_state.json:
+   Read the file again, find or create the entry for [alert_id],
+   set its `seen_ids` to current_ids, set `last_run` to today's ISO date.
+   Write the file back.
 ```
 
-Cron schedule:
-- Weekly: `0 8 * * 1` (Monday 8am UTC)
-- Twice weekly: `0 8 * * 1,4` (Mon + Thu 8am UTC)
+### Creating the scheduled task
+
+Use `mcp__scheduled-tasks__create_scheduled_task` with:
+- **name**: `fashion-alert-[alert_id]` (e.g. `fashion-alert-alert_001`)
+- **schedule**: 
+  - Weekly Monday: `0 9 * * 1` (9am local time)
+  - Twice weekly: `0 9 * * 1,4`
+- **prompt**: the filled-in template above
+
+After creating the task, save the task ID to the `custom_alerts` entry in profile.json as `task_id`.
+
+### monitoring_state.json schema
+
+Lives at `[FASHION_DATA_DIR]/monitoring_state.json`. Created automatically on first run.
+
+```json
+{
+  "alerts": {
+    "alert_001": {
+      "seen_ids": [
+        "Ultraboost 25||180",
+        "Samba OG||100",
+        "Forum Low||90"
+      ],
+      "last_run": "2026-04-28",
+      "last_new_count": 2
+    }
+  }
+}
+```
 
 ### profile.json schema for custom alerts
 
@@ -761,8 +805,8 @@ Cron schedule:
     "category": "shoes size 49",
     "url": "https://www.adidas.de/schuhe?sz=49&sortBy=newest",
     "frequency": "weekly",
-    "contact": "[user contact]",
-    "routine_id": "[CCR routine ID once created]",
+    "contact": "[user contact or email]",
+    "task_id": "[scheduled task ID once created]",
     "created_date": "2026-04-29",
     "enabled": true
   }
@@ -770,10 +814,11 @@ Cron schedule:
 ```
 
 ### Managing alerts
-- *"Show my alerts"* → list all `custom_alerts` entries with brand, frequency, URL
-- *"Pause [brand] alert"* → set `enabled: false`, disable routine at [claude.ai/code/routines](https://claude.ai/code/routines)
-- *"Add another alert"* → run setup flow again, append new entry to `custom_alerts`
-- *"Change [brand] URL"* → update `url` in profile.json, update routine prompt at [claude.ai/code/routines](https://claude.ai/code/routines)
+- *"Show my alerts"* → list all `custom_alerts` entries with brand, frequency, last run, last new count (from monitoring_state.json)
+- *"Pause [brand] alert"* → set `enabled: false` in profile.json, disable the task via `mcp__scheduled-tasks__update_scheduled_task`
+- *"Add another alert"* → run setup flow again, append new entry to `custom_alerts`, create new task
+- *"Change [brand] URL"* → update `url` in profile.json, recreate the scheduled task with the new URL
+- *"Reset [brand] baseline"* → delete the alert's entry from `monitoring_state.json` — next run re-baselines
 
 ---
 
