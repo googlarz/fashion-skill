@@ -33,9 +33,10 @@ At the start of every session:
 2. Check current weather for the user's city using: `curl -s "wttr.in/[city]?format=3"` (returns e.g. "Berlin: ⛅ +12°C"). Use this for outfit recommendations — don't ask the user for weather.
 3. Note the current season for the user's city and flag if it's a transition period.
 4. **Read the calendar** — fetch the next 7 days of events (see Calendar Integration section). Map each event to an occasion type. Hold this context silently — use it to inform recommendations without being asked.
-5. **If profile.json is missing or empty** → run the full onboarding flow below.
-6. **If profile.json exists but has gaps** (empty `style_words`, `budget_range`, `trouser_break`, `key_occasions`, etc.) → after the user's first message, acknowledge you're back, then naturally ask about the 1-2 most important missing fields. Don't dump all gaps at once — weave them into conversation.
-7. **If inventory has fewer than 15 items** → after addressing the user's first request, offer a wardrobe sprint (see Wardrobe Sprint section).
+5. **Check the new arrivals inbox** — look at `new_arrivals_inbox` in profile.json for any items with `status: "new"`. If any exist, surface them before anything else: *"[N] new drop(s) in your inbox from [brands] since last week — want to go through them?"* Then run the Inbox Review flow (see New Arrivals Inbox section). If the user declines, move on.
+6. **If profile.json is missing or empty** → run the full onboarding flow below.
+7. **If profile.json exists but has gaps** (empty `style_words`, `budget_range`, `trouser_break`, `key_occasions`, etc.) → after the user's first message, acknowledge you're back, then naturally ask about the 1-2 most important missing fields. Don't dump all gaps at once — weave them into conversation.
+8. **If inventory has fewer than 15 items** → after addressing the user's first request, offer a wardrobe sprint (see Wardrobe Sprint section).
 
 ---
 
@@ -748,19 +749,39 @@ Run this exact sequence:
    - Stop here
 
 5. If new_items is not empty:
-   Send this message to [CONTACT/ADDRESS]:
 
-   "🆕 New at [Brand] ([category]) — [today's date]
+   a) Write new items to profile.json inbox:
+      Read profile.json. Find or create the `new_arrivals_inbox` array.
+      For each new item, append an entry:
+      {
+        "id": "inbox_[alert_id]_[YYYYMMDD]_[index]",
+        "alert_id": "[alert_id]",
+        "brand": "[brand label]",
+        "category": "[category label]",
+        "name": "[item name]",
+        "price": [price as number],
+        "url": "[item url]",
+        "found_date": "[today ISO date]",
+        "status": "new"
+      }
+      Write profile.json back.
 
-   [for each new item: • [name] — €[price] → [url]]
+   b) Send notification to [CONTACT/ADDRESS]:
 
-   [if more than 8 new items: show first 8 then '+ N more → [base url]']"
+      "🆕 New at [Brand] ([category]) — [today's date]
+
+      [for each new item: • [name] — €[price] → [url]]
+
+      [if more than 8 new items: show first 8 then '+ N more → [base url]']
+
+      Saved to your fashion inbox for next session."
 
    If new_items is empty: send nothing.
 
 6. Update monitoring_state.json:
    Read the file again, find or create the entry for [alert_id],
-   set its `seen_ids` to current_ids, set `last_run` to today's ISO date.
+   set its `seen_ids` to current_ids, set `last_run` to today's ISO date,
+   set `last_new_count` to the number of new items found (0 if none).
    Write the file back.
 ```
 
@@ -819,6 +840,63 @@ Lives at `[FASHION_DATA_DIR]/monitoring_state.json`. Created automatically on fi
 - *"Add another alert"* → run setup flow again, append new entry to `custom_alerts`, create new task
 - *"Change [brand] URL"* → update `url` in profile.json, recreate the scheduled task with the new URL
 - *"Reset [brand] baseline"* → delete the alert's entry from `monitoring_state.json` — next run re-baselines
+
+---
+
+## New Arrivals Inbox
+
+The inbox (`new_arrivals_inbox` in profile.json) is the staging area between monitoring alerts and the wishlist. Items land here when the monitoring agent finds something new. The user reviews them in the next session and decides what to do with each.
+
+### Inbox review flow
+
+Triggered at session start when `status: "new"` items exist, or when user says "show my inbox", "what's new", "any new drops".
+
+Present items grouped by brand, one at a time:
+
+```
+🆕 New drop from Adidas (shoes) — found Mon 28 Apr
+
+Ultraboost 25 · €180
+→ https://adidas.de/...
+
+Wishlist it, buy it, or skip?
+```
+
+For each item, wait for the user's response:
+
+| User says | Action |
+|-----------|--------|
+| "wishlist" / "save it" / "maybe" | Add to wishlist array in profile.json (see Wishlist section). Set inbox status → `"wishlisted"` |
+| "buy it" / "I want this" | Add to wishlist with `priority: "buy_now"`. Set inbox status → `"wishlisted"`. Offer to do a pre-purchase check. |
+| "skip" / "no" / "not for me" | Set inbox status → `"dismissed"` |
+| "show me more" / "tell me about it" | Pull any detail you know about the item (model info, how it fits the user's profile, wardrobe pairings), then ask again |
+
+After going through all items: *"All done — [N] wishlisted, [N] skipped."*
+
+### profile.json inbox schema
+
+```json
+"new_arrivals_inbox": [
+  {
+    "id": "inbox_alert_001_20260428_0",
+    "alert_id": "alert_001",
+    "brand": "Adidas",
+    "category": "shoes size 49",
+    "name": "Ultraboost 25",
+    "price": 180,
+    "url": "https://www.adidas.de/ultraboost-25/...",
+    "found_date": "2026-04-28",
+    "status": "new"
+  }
+]
+```
+
+`status` values: `"new"` → `"wishlisted"` | `"dismissed"`
+
+### Inbox commands
+- *"Show my inbox"* / *"what's new"* → run inbox review flow for all `status: "new"` items
+- *"Clear inbox"* → set all items to `"dismissed"`, confirm count first
+- *"What did I skip from Adidas?"* → list `status: "dismissed"` items filtered by brand
 
 ---
 
