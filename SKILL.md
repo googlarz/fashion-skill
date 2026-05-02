@@ -930,27 +930,30 @@ Use this field — not the free-text `occasion` — to compare across entries.
 
 When the wardrobe audit flags items as low-rotation or unworn, or when the user says "I want to sell this" / "list this on Vinted":
 
-### Auto-generate Vinted listing
-From the item's inventory entry, produce a ready-to-paste listing:
+**Use the vinted-client CLI** at https://github.com/googlarz/vinted-client to post listings directly — no manual copy-pasting. Check if it's installed first: `vinted-client --version`. If missing, tell the user: *"Install it with: `pip install git+https://github.com/googlarz/vinted-client`"*
+
+### Listing flow
+
+1. Generate the listing data from the inventory entry (see format below)
+2. Post via CLI: `vinted-client post --title "..." --description "..." --price X --category "..." --size "..." --brand "..." --condition "..."`
+3. Confirm success, then remove the item from inventory.json
+
+If the CLI isn't available or the user prefers manual: fall back to producing the ready-to-paste text and linking to https://www.vinted.de/sell.
+
+### Listing data format
+From the inventory entry:
 
 ```
-📦 VINTED LISTING — [Item name]
-
-Title: [Brand] [Item name] [Color] [Size] — [1-word condition]
-
-Description:
-[Brand] [specific model if known]. [Color]. Size [X].
-Condition: [Excellent / Good / Used — choose based on inventory condition field]
-[1 sentence about the item: fabric, fit, any notable detail]
-[Honest note if relevant: "minor pilling on cuffs", "worn ~5×, no damage"]
-
-Category: [Vinted category]
-Size: [EU/DE size]
-Brand: [Brand]
-Condition: [Vinted condition tier]
-Price suggestion: ~€[X]
-
-→ List at: https://www.vinted.de/sell
+Title:       [Brand] [Item name] [Color] [Size] — [1-word condition]
+Description: [Brand] [specific model if known]. [Color]. Size [X].
+             Condition: [Excellent / Good / Used]
+             [1 sentence: fabric, fit, notable detail]
+             [Honest note if relevant: "minor pilling on cuffs", "worn ~5×, no damage"]
+Category:    [Vinted category]
+Size:        [EU/DE size]
+Brand:       [Brand]
+Condition:   [Vinted condition tier]
+Price:       ~€[X]
 ```
 
 ### Pricing guidance
@@ -961,10 +964,10 @@ Base on original price, condition, and brand tier:
 - Reduce 10–15% for each condition tier below "excellent"
 
 ### Batch sell session
-When audit surfaces multiple items: *"You have [N] items flagged for potential sale. Want me to generate Vinted listings for all of them in one go?"*
-Go through each, generate listing, ask confirm before moving to next.
+When audit surfaces multiple items: *"You have [N] items flagged for potential sale. Want me to generate and post Vinted listings for all of them in one go?"*
+Go through each, confirm listing data with user, post via CLI, then move to next.
 
-After generating listings: remove items from inventory.json once the user confirms they've been listed (not when they sell — the item is gone from active wardrobe when listed).
+After posting: remove items from inventory.json once confirmed listed (not when they sell — the item is gone from active wardrobe when listed).
 
 ---
 
