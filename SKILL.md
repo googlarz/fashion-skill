@@ -28,15 +28,28 @@ Your personal fashion expert — for any gender, any style direction. You learn 
 
 ## Session Start
 
-At the start of every session:
-1. Read all data files (see Data Files section for paths).
-2. Check current weather for the user's city using: `curl -s "wttr.in/[city]?format=3"` (returns e.g. "Berlin: ⛅ +12°C"). Use this for outfit recommendations — don't ask the user for weather.
-3. Note the current season for the user's city and flag if it's a transition period.
-4. **Read the calendar** — fetch the next 7 days of events (see Calendar Integration section). Map each event to an occasion type. Hold this context silently — use it to inform recommendations without being asked.
-5. **Check the new arrivals inbox** — look at `new_arrivals_inbox` in profile.json for any items with `status: "new"`. If any exist, surface them before anything else: *"[N] new drop(s) in your inbox from [brands] since last week — want to go through them?"* Then run the Inbox Review flow (see New Arrivals Inbox section). If the user declines, move on.
-6. **If profile.json is missing or empty** → run the full onboarding flow below.
-7. **If profile.json exists but has gaps** (empty `style_words`, `budget_range`, `trouser_break`, `key_occasions`, etc.) → after the user's first message, acknowledge you're back, then naturally ask about the 1-2 most important missing fields. Don't dump all gaps at once — weave them into conversation.
-8. **If inventory has fewer than 15 items** → after addressing the user's first request, offer a wardrobe sprint (see Wardrobe Sprint section).
+At the start of every session, load only what the request actually needs:
+
+**Always load (every session):**
+- `profile.json` — core identity, body, color system, city, inbox
+
+**Load only for outfit/recommendation sessions** ("what should I wear", "outfit for X", "pre-purchase check", "what's trending", weekly plan):
+- `inventory.json`
+- `feedback.json` (last 20 entries only — skip older ones)
+- `recommendations-history.json` (last 30 entries only — enough for 4-week repeat detection)
+
+**Skip for wardrobe management sessions** ("log this", "add item", "show my wardrobe", "show palette", "import purchases", "sell this"):
+- No need for feedback.json or recommendations-history.json
+
+**Weather + calendar — skip for non-outfit sessions:**
+- Outfit/recommendation sessions: fetch weather (`curl -s "wttr.in/[city]?format=3"`) and read calendar (next 7 days). Hold silently — use to inform recommendations without being asked.
+- Wardrobe management / logging sessions: skip both. They don't affect the outcome.
+
+**After loading profile.json:**
+1. **Check the new arrivals inbox** — look at `new_arrivals_inbox` for items with `status: "new"`. If any exist, surface them: *"[N] new drop(s) in your inbox from [brands] — want to go through them?"* Run Inbox Review flow. If user declines, move on.
+2. **If profile.json is missing or empty** → run the full onboarding flow below.
+3. **If profile.json exists but has gaps** → after addressing the user's first request, naturally ask about the 1–2 most important missing fields. Don't dump all gaps at once.
+4. **If inventory has fewer than 15 items** → after addressing the user's first request, offer a wardrobe sprint.
 
 ---
 
@@ -1464,14 +1477,14 @@ The goal is preventing decisions they'll regret.
 
 ## Data Files
 
-All data lives in local JSON files. Read all four at session start. Write immediately after each event — don't batch updates.
+All data lives in local JSON files. Load lazily — see Session Start for which files each session type needs. Write immediately after each event — don't batch updates.
 
-| File | Path | Write trigger |
-|------|------|---------------|
-| profile.json | `FASHION_DATA_DIR/profile.json` | Each onboarding block; any profile correction |
-| inventory.json | `FASHION_DATA_DIR/inventory.json` | After user confirms item identification |
-| feedback.json | `FASHION_DATA_DIR/feedback.json` | After user confirms outfit log |
-| recommendations-history.json | `FASHION_DATA_DIR/recommendations-history.json` | After delivering any outfit recommendation |
+| File | Path | Load when | Write trigger |
+|------|------|-----------| --------------|
+| profile.json | `FASHION_DATA_DIR/profile.json` | Always | Each onboarding block; any profile correction |
+| inventory.json | `FASHION_DATA_DIR/inventory.json` | Outfit / item sessions | After user confirms item identification |
+| feedback.json | `FASHION_DATA_DIR/feedback.json` | Outfit sessions (last 20 entries) | After user confirms outfit log |
+| recommendations-history.json | `FASHION_DATA_DIR/recommendations-history.json` | Outfit sessions (last 30 entries) | After delivering any outfit recommendation — trim to 60 entries on write |
 
 **Finding the data directory:**
 Check the `FASHION_DATA_DIR` environment variable first. If not set, look for the data files next to this SKILL.md file. Use whichever location contains an existing `profile.json`.
@@ -1479,6 +1492,8 @@ Check the `FASHION_DATA_DIR` environment variable first. If not set, look for th
 If no data files exist anywhere → run the onboarding flow, then write the new files to the same directory as this SKILL.md.
 
 ### recommendations-history.json entry schema
+
+**Cap at 60 entries:** After every write, if the array exceeds 60 entries, drop the oldest ones to bring it back to 60. Repeat detection only needs the last 4 weeks (~15 entries typical) so older history has no value in context.
 ```json
 {
   "id": "rec_001",
